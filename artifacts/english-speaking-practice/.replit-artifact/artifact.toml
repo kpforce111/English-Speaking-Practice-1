@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "English Speaking Practice"
+description = "A mobile-friendly conversational English practice app where learners chat with a friendly AI partner, receive gentle corrections, and can naturally mix Hindi and English."
+version = "1.0.0"
+id = "artifacts/english-speaking-practice"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25677
+
+[services.development]
+run = "pnpm --filter @workspace/english-speaking-practice run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/english-speaking-practice", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/english-speaking-practice/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25677"
+BASE_PATH = "/"

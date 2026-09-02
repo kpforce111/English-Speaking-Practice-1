@@ -1,6 +1,6 @@
-# [Project name]
+# English Speaking Practice
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A mobile-friendly conversational English practice app powered by a friendly Claude speaking partner.
 
 ## Run & Operate
 
@@ -22,23 +22,28 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/english-speaking-practice/src/App.tsx` — chat experience, session persistence, and client interaction state
+- `artifacts/english-speaking-practice/src/index.css` — purple/lavender visual theme and motion system
+- `artifacts/api-server/src/routes/chat.ts` — validated Claude conversation endpoint
+- `lib/api-spec/openapi.yaml` — source of truth for the chat API contract
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- The browser stores the current conversation in localStorage so the AI can receive session context without requiring accounts or a database.
+- The Anthropic API key stays server-side in `ANTHROPIC_API_KEY`; the browser only calls the local `/api/chat` endpoint.
+- The practice partner receives a concise system prompt that handles natural grammar rephrasing and Hindi/English bilingual replies.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Users can start with a prompt or type freely, see short AI replies with a typing state, retry failed sends, clear the current session, and return to an in-progress conversation on the same device.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Keep replies short, friendly, encouraging, and gently corrective; use Hindi and English together when the learner writes in Hindi.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Keep the API contract and generated clients synchronized by running the API codegen command after OpenAPI changes.
 
 ## Pointers
 

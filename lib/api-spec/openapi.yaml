@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: chat
+    description: English practice conversation
 paths:
   /healthz:
     get:
@@ -24,6 +26,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /chat:
+    post:
+      operationId: sendChatMessage
+      tags: [chat]
+      summary: Send a message to the English practice partner
+      description: Returns a concise, encouraging AI reply using the current session conversation as context.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatMessageInput"
+      responses:
+        "200":
+          description: AI reply
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessageResponse"
+        "400":
+          description: Invalid message
+        "500":
+          description: AI service error
 components:
   schemas:
     HealthStatus:
@@ -33,4 +58,33 @@ components:
           type: string
       required:
         - status
+    ChatMessage:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+          minLength: 1
+      required: [role, content]
+    ChatMessageInput:
+      type: object
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        history:
+          type: array
+          maxItems: 40
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+      required: [message]
+    ChatMessageResponse:
+      type: object
+      properties:
+        reply:
+          type: string
+      required: [reply]
 
