@@ -3,14 +3,22 @@
   "short_name": "Rllora AI",
   "description": "Practice everyday English with Rllora, a friendly AI speaking partner who keeps conversations short, encouraging, and natural.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#faf7ff",
+  "theme_color": "#7a3fc5",
+  "orientation": "portrait",
   "icons": [
     {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
