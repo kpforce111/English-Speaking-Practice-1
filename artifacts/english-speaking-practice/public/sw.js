@@ -1,10 +1,10 @@
 const CACHE_NAME = "rllora-ai-v2";
 const APP_SHELL = [
-  "./",
-  "./manifest.json",
-  "./favicon.svg",
-  "./icon-192.png",
-  "./icon-512.png",
+  "/",
+  "/manifest.json",
+  "/favicon.svg",
+  "/icon-192.png",
+  "/icon-512.png",
 ];
 
 self.addEventListener("install", (event) => {
@@ -48,7 +48,7 @@ self.addEventListener("fetch", (event) => {
       .catch(() =>
         caches
           .match(event.request)
-          .then((cached) => cached || caches.match(new URL("./", self.registration.scope))),
+           .then((cached) => cached || caches.match(new URL("/", self.registration.scope))),
       ),
   );
 });

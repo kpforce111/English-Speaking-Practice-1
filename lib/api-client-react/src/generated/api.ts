@@ -1507,12 +1507,20 @@ export const getCreatePremiumCheckoutUrl = () => {
 /**
  * @summary Create provider checkout after external billing setup
  */
-export const createPremiumCheckout = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+export type CreatePremiumCheckoutRequest = {
+  plan: 'monthly' | 'quarterly' | 'yearly';
+  provider: 'stripe' | 'razorpay';
+  country: string;
+};
 
-  return customFetch<void>(getCreatePremiumCheckoutUrl(),
+export const createPremiumCheckout = async (body: CreatePremiumCheckoutRequest, options?: Parameters<typeof customFetch>[1]): Promise<any> => {
+
+  return customFetch<any>(getCreatePremiumCheckoutUrl(),
   {
     ...options,
-    method: 'POST'
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(options?.headers || {}) },
+    body: JSON.stringify(body)
 
 
   }
@@ -1522,9 +1530,9 @@ export const createPremiumCheckout = async ( options?: Parameters<typeof customF
 
 
 
-export const getCreatePremiumCheckoutMutationOptions = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPremiumCheckout>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createPremiumCheckout>>, TError,void, TContext> => {
+export const getCreatePremiumCheckoutMutationOptions = <TError = ErrorType<any>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPremiumCheckout>>, TError,CreatePremiumCheckoutRequest, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPremiumCheckout>>, TError,CreatePremiumCheckoutRequest, TContext> => {
 
 const mutationKey = ['createPremiumCheckout'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -1536,10 +1544,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPremiumCheckout>>, void> = () => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPremiumCheckout>>, CreatePremiumCheckoutRequest> = (body) => {
 
 
-          return  createPremiumCheckout(requestOptions)
+          return  createPremiumCheckout(body, requestOptions)
         }
 
 
@@ -1549,19 +1557,19 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type CreatePremiumCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof createPremiumCheckout>>>
+export type CreatePremiumCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof createPremiumCheckout>>>
 
-    export type CreatePremiumCheckoutMutationError = ErrorType<void>
+export type CreatePremiumCheckoutMutationError = ErrorType<any>
 
     /**
  * @summary Create provider checkout after external billing setup
  */
-export const useCreatePremiumCheckout = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPremiumCheckout>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useCreatePremiumCheckout = <TError = ErrorType<any>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPremiumCheckout>>, TError,CreatePremiumCheckoutRequest, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createPremiumCheckout>>,
         TError,
-        void,
+         CreatePremiumCheckoutRequest,
         TContext
       > => {
       return useMutation(getCreatePremiumCheckoutMutationOptions(options));

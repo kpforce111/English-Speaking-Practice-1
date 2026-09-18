@@ -11,6 +11,7 @@ import { pool } from "@workspace/db";
 import { ensureCompatibleFormat, speechToText } from "@workspace/integrations-openai-ai-server/audio";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import Stripe from "stripe";
+import { publicAppUrl } from "../lib/publicAppUrl";
 
 const router: IRouter = Router();
 const scenarios = ["job-interview", "office", "shopping", "travel", "doctor", "customer-service", "bpo", "daily-life"] as const;
@@ -394,7 +395,7 @@ router.post("/checkout", async (req, res) => {
     if (missing.length) { res.status(503).json({ error: `Stripe is not configured. Missing: ${missing.join(", ")}`, code: "STRIPE_NOT_CONFIGURED", missing }); return; }
     const stripe = stripeClient();
     if (!stripe) { res.status(503).json({ error: "Stripe is not configured.", code: "STRIPE_NOT_CONFIGURED" }); return; }
-    const origin = `${req.protocol}://${req.get("host")}`;
+    const origin = publicAppUrl();
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: process.env.STRIPE_TRIAL_PRICE_ID!, quantity: 1 }, { price: process.env[priceKey]!, quantity: 1 }],

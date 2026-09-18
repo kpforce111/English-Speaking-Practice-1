@@ -3,6 +3,49 @@ import { useListPremiumPlans, useListPaymentOptions, useCreatePremiumCheckout, u
 import { useQueryClient } from '@tanstack/react-query';
 import { Sparkles, Check, Loader2, AlertCircle, ShieldCheck, Globe, LogOut } from 'lucide-react';
 
+type RazorpayCheckoutData = {
+  keyId: string;
+  trialOrderId: string;
+  trialAmountPaise: number;
+};
+
+type RazorpayInstance = { open: () => void; on: (event: string, handler: (response: unknown) => void) => void };
+type RazorpayOptions = {
+  key: string;
+  order_id: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  handler: () => void;
+  modal: { ondismiss: () => void };
+  theme: { color: string };
+};
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: RazorpayOptions) => RazorpayInstance;
+  }
+}
+
+const loadRazorpay = (): Promise<void> => {
+  if (window.Razorpay) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('Razorpay checkout could not be loaded.')), { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Razorpay checkout could not be loaded.'));
+    document.head.appendChild(script);
+  });
+};
+
 const FEATURES = [
   'Expanded text chat limits',
   '15 minutes of premium voice practice daily',
@@ -52,13 +95,44 @@ export function Pricing() {
     }
     
     setError(null);
-    checkout.mutate({ data: { plan: selectedPlan, provider: selectedProvider } } as any, {
+     checkout.mutate({ plan: selectedPlan, provider: selectedProvider, country: selectedCountry }, {
       onSuccess: (data: any) => {
-        if (data && data.checkoutUrl) {
+         if (selectedProvider === 'stripe' && data?.checkoutUrl) {
            window.location.href = data.checkoutUrl;
-        } else {
+           return;
+         }
+         if (selectedProvider !== 'razorpay') {
            setError('Checkout redirect failed: Provider integration not fully configured.');
-        }
+           return;
+         }
+         const razorpayData = data as RazorpayCheckoutData;
+         if (!razorpayData?.keyId || !razorpayData.trialOrderId || razorpayData.trialAmountPaise !== 500) {
+           setError('Razorpay checkout did not return valid payment details.');
+           return;
+         }
+         loadRazorpay().then(() => {
+           if (!window.Razorpay) throw new Error('Razorpay checkout is unavailable.');
+           const razorpay = new window.Razorpay({
+             key: razorpayData.keyId,
+             order_id: razorpayData.trialOrderId,
+             amount: 500,
+             currency: 'INR',
+             name: 'Rllora AI',
+             description: '₹5 2-Day Premium Trial',
+             handler: () => {
+               setError('Payment submitted. Premium access will appear after Razorpay confirms the payment.');
+               queryClient.invalidateQueries({ queryKey: ['/api/subscription'] });
+             },
+             modal: {
+               ondismiss: () => setError('Payment was cancelled. No Premium access was granted.'),
+             },
+             theme: { color: '#7a3fc5' },
+           });
+           razorpay.on('payment.failed', () => {
+             setError('Payment failed. No Premium access was granted. Please try again or use another payment method.');
+           });
+           razorpay.open();
+         }).catch((err: Error) => setError(err.message || 'Unable to open Razorpay checkout.'));
       },
       onError: (err: any) => {
         // preserve the honest 503 config errors from backend
