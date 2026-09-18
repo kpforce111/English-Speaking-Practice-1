@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import type { Request, Response } from "express";
 import { pool } from "@workspace/db";
+import { getAuth } from "@clerk/express";
 
 const COOKIE_NAME = "rllora_session";
 if (!process.env.SESSION_SECRET && process.env.NODE_ENV !== "test") {
@@ -28,12 +29,20 @@ function verified(value: string | undefined) {
   return id;
 }
 
-export async function getUserId(req: Request, res: Response): Promise<string> {
+async function getDeviceUserId(req: Request, res: Response): Promise<string> {
   const existing = verified(req.headers.cookie?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1]);
   if (existing) {
-    await pool.query("UPDATE device_sessions SET last_seen_at = NOW() WHERE id = $1", [existing]);
-    const found = (await pool.query("SELECT user_id FROM device_sessions WHERE id = $1", [existing])).rows[0]?.user_id as string | undefined;
-    if (found) return found;
+    const found = (await pool.query(
+      `SELECT ds.user_id, u.clerk_user_id
+       FROM device_sessions ds
+       JOIN users u ON u.id = ds.user_id
+       WHERE ds.id = $1`,
+      [existing],
+    )).rows[0] as { user_id?: string; clerk_user_id?: string | null } | undefined;
+    if (found?.user_id && !found.clerk_user_id) {
+      await pool.query("UPDATE device_sessions SET last_seen_at = NOW() WHERE id = $1", [existing]);
+      return found.user_id;
+    }
   }
   const userId = crypto.randomUUID();
   const sessionId = crypto.randomUUID();
@@ -48,6 +57,108 @@ export async function getUserId(req: Request, res: Response): Promise<string> {
     path: "/",
   });
   return userId;
+}
+
+async function mergeDeviceProfile(clerkUserId: string, deviceUserId: string): Promise<string> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [clerkUserId]);
+    let accountId = (await client.query("SELECT id FROM users WHERE clerk_user_id = $1", [clerkUserId])).rows[0]?.id as string | undefined;
+    if (!accountId) {
+      accountId = crypto.randomUUID();
+      await client.query("INSERT INTO users (id, clerk_user_id) VALUES ($1, $2) ON CONFLICT (clerk_user_id) DO NOTHING", [accountId, clerkUserId]);
+      accountId = (await client.query("SELECT id FROM users WHERE clerk_user_id = $1", [clerkUserId])).rows[0].id;
+      await client.query("INSERT INTO entitlements (user_id) VALUES ($1) ON CONFLICT DO NOTHING", [accountId]);
+    }
+    if (!accountId) throw new Error("Unable to resolve account profile");
+    if (accountId !== deviceUserId) {
+      const sourceUser = (await client.query("SELECT clerk_user_id FROM users WHERE id = $1 FOR UPDATE", [deviceUserId])).rows[0];
+      if (!sourceUser || sourceUser.clerk_user_id) {
+        await client.query("COMMIT");
+        return accountId;
+      }
+      await client.query("UPDATE practice_events SET user_id = $1 WHERE user_id = $2", [accountId, deviceUserId]);
+      await client.query(
+        `INSERT INTO daily_usage (user_id, usage_date, text_messages, voice_seconds)
+         SELECT $1, usage_date, text_messages, voice_seconds FROM daily_usage WHERE user_id = $2
+         ON CONFLICT (user_id, usage_date) DO UPDATE SET
+           text_messages = daily_usage.text_messages + EXCLUDED.text_messages,
+           voice_seconds = daily_usage.voice_seconds + EXCLUDED.voice_seconds`,
+        [accountId, deviceUserId],
+      );
+      await client.query("DELETE FROM daily_usage WHERE user_id = $1", [deviceUserId]);
+      await client.query(
+        `INSERT INTO lesson_progress (user_id, lesson_id, level, completed_minutes, completed_at, updated_at)
+         SELECT $1, lesson_id, level, completed_minutes, completed_at, updated_at FROM lesson_progress WHERE user_id = $2
+         ON CONFLICT (user_id, lesson_id) DO UPDATE SET
+           completed_minutes = lesson_progress.completed_minutes + EXCLUDED.completed_minutes,
+           completed_at = COALESCE(lesson_progress.completed_at, EXCLUDED.completed_at),
+           updated_at = GREATEST(lesson_progress.updated_at, EXCLUDED.updated_at)`,
+        [accountId, deviceUserId],
+      );
+      await client.query("DELETE FROM lesson_progress WHERE user_id = $1", [deviceUserId]);
+      const source = (await client.query("SELECT * FROM entitlements WHERE user_id = $1", [deviceUserId])).rows[0];
+      const target = (await client.query("SELECT * FROM entitlements WHERE user_id = $1", [accountId])).rows[0];
+      const sourceOwnsBilling = Boolean(source?.provider_subscription_id || source?.pending_payment_id);
+      const targetOwnsBilling = Boolean(target?.provider_subscription_id || target?.pending_payment_id);
+      if (sourceOwnsBilling && !targetOwnsBilling) {
+        await client.query(
+          `UPDATE entitlements target SET
+             plan = source.plan,
+             status = source.status,
+             trial_ends_at = source.trial_ends_at,
+             current_period_ends_at = source.current_period_ends_at,
+             provider = source.provider,
+             provider_customer_id = source.provider_customer_id,
+             provider_subscription_id = source.provider_subscription_id,
+             pending_payment_id = source.pending_payment_id,
+             selected_plan = source.selected_plan
+           FROM entitlements source
+           WHERE target.user_id = $1 AND source.user_id = $2`,
+          [accountId, deviceUserId],
+        );
+        await client.query(
+          `UPDATE users target SET
+             stripe_customer_id = COALESCE(target.stripe_customer_id, source.stripe_customer_id),
+             razorpay_customer_id = COALESCE(target.razorpay_customer_id, source.razorpay_customer_id)
+           FROM users source WHERE target.id = $1 AND source.id = $2`,
+          [accountId, deviceUserId],
+        );
+        await client.query("UPDATE users SET stripe_customer_id = NULL, razorpay_customer_id = NULL WHERE id = $1", [deviceUserId]);
+      }
+      if (!sourceOwnsBilling || !targetOwnsBilling) {
+        await client.query(
+          `UPDATE entitlements SET
+             plan = 'free', status = 'active', trial_ends_at = NULL,
+             current_period_ends_at = NULL, provider = NULL,
+             provider_customer_id = NULL, provider_subscription_id = NULL,
+             pending_payment_id = NULL, selected_plan = NULL
+           WHERE user_id = $1`,
+          [deviceUserId],
+        );
+      }
+    }
+    await client.query("COMMIT");
+    return accountId;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getUserId(req: Request, res: Response): Promise<string> {
+  const deviceUserId = await getDeviceUserId(req, res);
+  const auth = getAuth(req);
+  const clerkUserId = auth?.userId;
+  return clerkUserId ? mergeDeviceProfile(clerkUserId, deviceUserId) : deviceUserId;
+}
+
+export function authenticatedClerkUserId(req: Request): string | null {
+  const auth = getAuth(req);
+  return auth?.userId || null;
 }
 
 export function words(value: string) {

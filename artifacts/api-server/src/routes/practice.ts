@@ -4,8 +4,9 @@ import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Router, type IRouter } from "express";
+import { clerkClient } from "@clerk/express";
 import Anthropic from "@anthropic-ai/sdk";
-import { getUserId, entitlement, requirePremium, words, recordEvent, reserveVoice, releaseVoice } from "../lib/session";
+import { authenticatedClerkUserId, getUserId, entitlement, requirePremium, words, recordEvent, reserveVoice, releaseVoice } from "../lib/session";
 import { pool } from "@workspace/db";
 import { ensureCompatibleFormat, speechToText } from "@workspace/integrations-openai-ai-server/audio";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -97,9 +98,54 @@ async function translateOrCorrect(instruction: string, content: string) {
 
 router.get("/session", async (req, res) => {
   const userId = await getUserId(req, res);
+  const signedIn = Boolean(authenticatedClerkUserId(req));
   const current = await entitlement(userId);
   const today = await usage(userId);
-  res.json({ userId, plan: current.effectivePlan, status: current.effectiveStatus, providerStatus: current.status, usage: { textMessages: today.row.text_messages, voiceSeconds: today.row.voice_seconds }, limits: { freeTextMessages: 10, premiumTextMessages: 100, freeWords: 50, premiumVoiceSeconds: 900 } });
+  res.json({ userId, signedIn, plan: current.effectivePlan, status: current.effectiveStatus, providerStatus: current.status, usage: { textMessages: today.row.text_messages, voiceSeconds: today.row.voice_seconds }, limits: { freeTextMessages: 10, premiumTextMessages: 100, freeWords: 50, premiumVoiceSeconds: 900 } });
+});
+
+router.get("/account/export", async (req, res) => {
+  if (!authenticatedClerkUserId(req)) { res.status(401).json({ error: "Sign in to export your account." }); return; }
+  const userId = await getUserId(req, res);
+  const [account, subscription, usageRows, progressRows, eventRows] = await Promise.all([
+    pool.query("SELECT id, created_at, stripe_customer_id, razorpay_customer_id FROM users WHERE id = $1", [userId]),
+    pool.query("SELECT * FROM entitlements WHERE user_id = $1", [userId]),
+    pool.query("SELECT * FROM daily_usage WHERE user_id = $1 ORDER BY usage_date", [userId]),
+    pool.query("SELECT * FROM lesson_progress WHERE user_id = $1 ORDER BY updated_at", [userId]),
+    pool.query("SELECT id, kind, content, metadata, duration_seconds, created_at FROM practice_events WHERE user_id = $1 ORDER BY created_at", [userId]),
+  ]);
+  res.setHeader("Content-Disposition", "attachment; filename=rllora-account-data.json");
+  res.json({ exportedAt: new Date().toISOString(), account: account.rows[0], entitlement: subscription.rows[0], dailyUsage: usageRows.rows, lessonProgress: progressRows.rows, practiceEvents: eventRows.rows });
+});
+
+router.delete("/account", async (req, res) => {
+  const clerkUserId = authenticatedClerkUserId(req);
+  if (!clerkUserId) { res.status(401).json({ error: "Sign in to delete your account." }); return; }
+  const userId = await getUserId(req, res);
+  const current = await entitlement(userId);
+  if (current.provider_subscription_id && ["active", "trialing", "cancel_pending"].includes(String(current.status))) {
+    res.status(409).json({ error: "Cancel your subscription and wait for Premium access to end before deleting your account.", code: "ACTIVE_SUBSCRIPTION" });
+    return;
+  }
+  const client = await pool.connect();
+  try {
+    await clerkClient.users.deleteUser(clerkUserId);
+    await client.query("BEGIN");
+    await client.query("DELETE FROM practice_events WHERE user_id = $1", [userId]);
+    await client.query("DELETE FROM daily_usage WHERE user_id = $1", [userId]);
+    await client.query("DELETE FROM lesson_progress WHERE user_id = $1", [userId]);
+    await client.query("DELETE FROM entitlements WHERE user_id = $1", [userId]);
+    await client.query("DELETE FROM device_sessions WHERE user_id = $1", [userId]);
+    await client.query("DELETE FROM users WHERE id = $1", [userId]);
+    await client.query("COMMIT");
+    res.status(204).send();
+  } catch (error) {
+    await client.query("ROLLBACK");
+    req.log.error({ error }, "account deletion failed");
+    res.status(502).json({ error: "Account deletion could not be completed." });
+  } finally {
+    client.release();
+  }
 });
 
 router.get("/subscription", async (req, res) => {
@@ -306,6 +352,7 @@ router.get("/payment-options", (req, res) => {
 });
 
 router.post("/checkout", async (req, res) => {
+  if (!authenticatedClerkUserId(req)) { res.status(401).json({ error: "Sign in before starting Premium checkout.", code: "SIGN_IN_REQUIRED" }); return; }
   const userId = await getUserId(req, res);
   const { provider, plan = "monthly", country = "IN" } = req.body || {};
   if (!plans[plan as keyof typeof plans]) { res.status(400).json({ error: "plan must be monthly, quarterly, or yearly" }); return; }
@@ -358,6 +405,9 @@ router.post("/checkout", async (req, res) => {
       customer_creation: "always",
       allow_promotion_codes: true,
     });
+    if (typeof session.customer === "string") {
+      await pool.query("UPDATE users SET stripe_customer_id = $1 WHERE id = $2", [session.customer, userId]);
+    }
     await pool.query("UPDATE entitlements SET plan = 'free', provider = 'stripe', selected_plan = $1, pending_payment_id = $2, provider_subscription_id = NULL, status = 'pending_payment', trial_ends_at = NULL WHERE user_id = $3", [plan, session.id, userId]);
     res.json({ provider: "stripe", checkoutUrl: session.url, sessionId: session.id, trialDays: 2 });
     return;
@@ -391,6 +441,7 @@ router.post("/webhooks/:provider", async (req, res) => {
               const verifiedPeriodEnd = (subscription as any).current_period_end;
               await pool.query("UPDATE entitlements SET plan = $1, status = $2, provider_subscription_id = $3, provider_customer_id = $4, pending_payment_id = NULL, trial_ends_at = TO_TIMESTAMP($5), current_period_ends_at = CASE WHEN $6 THEN TO_TIMESTAMP($7) ELSE current_period_ends_at END WHERE user_id = $8 AND pending_payment_id = $9 AND status = 'pending_payment'",
                 [metadata.plan, subscription.status === "trialing" ? "trialing" : "active", subscription.id, object.customer || null, trialEnd, Boolean(verifiedPeriodEnd), verifiedPeriodEnd || 0, metadata.userId, object.id]);
+              if (object.customer) await pool.query("UPDATE users SET stripe_customer_id = $1 WHERE id = $2", [object.customer, metadata.userId]);
             }
           }
         }
@@ -434,6 +485,7 @@ router.post("/webhooks/:provider", async (req, res) => {
       if (pending && notes.userId === pending.user_id && notes.purpose === "2-day-premium-trial") {
         const trialEnds = Math.floor(Date.now() / 1000) + 2 * 24 * 60 * 60;
         await pool.query("UPDATE entitlements SET plan = selected_plan, status = 'trialing', pending_payment_id = NULL, trial_ends_at = TO_TIMESTAMP($1) WHERE user_id = $2 AND pending_payment_id = $3 AND status = 'pending_payment'", [trialEnds, pending.user_id, String(paidOrderId)]);
+        if (paymentEntity?.customer_id) await pool.query("UPDATE users SET razorpay_customer_id = $1 WHERE id = $2", [paymentEntity.customer_id, pending.user_id]);
       }
       res.json({ received: true });
       return;
@@ -441,7 +493,10 @@ router.post("/webhooks/:provider", async (req, res) => {
     const entity = event?.payload?.subscription?.entity;
     if (entity?.id) {
       const owned = (await pool.query("SELECT 1 FROM entitlements WHERE provider_subscription_id = $1 AND status <> 'pending_payment'", [entity.id])).rowCount === 1;
-      if (owned) await pool.query("UPDATE entitlements SET status = $1 WHERE provider_subscription_id = $2", [entity.status === "active" ? "active" : entity.status, entity.id]);
+      if (owned) {
+        await pool.query("UPDATE entitlements SET status = $1, provider_customer_id = COALESCE($2, provider_customer_id) WHERE provider_subscription_id = $3", [entity.status === "active" ? "active" : entity.status, entity.customer_id || null, entity.id]);
+        if (entity.customer_id) await pool.query("UPDATE users SET razorpay_customer_id = $1 WHERE id = (SELECT user_id FROM entitlements WHERE provider_subscription_id = $2)", [entity.customer_id, entity.id]);
+      }
     }
     res.json({ received: true });
     return;

@@ -28,6 +28,7 @@ import type {
   CorrectPracticeSentence200,
   CorrectPracticeSentenceBody,
   EmptySubscription,
+  ExportAccountData200,
   GetPracticeProgress200,
   GetPracticeSession200,
   GetWeeklyPracticeReport200,
@@ -234,7 +235,7 @@ export const getGetPracticeSessionUrl = () => {
 }
 
 /**
- * @summary Get anonymous session entitlement and daily usage
+ * @summary Get account or device session entitlement and daily usage
  */
 export const getPracticeSession = async ( options?: Parameters<typeof customFetch>[1]): Promise<GetPracticeSession200> => {
 
@@ -281,7 +282,7 @@ export type GetPracticeSessionQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Get anonymous session entitlement and daily usage
+ * @summary Get account or device session entitlement and daily usage
  */
 
 export function useGetPracticeSession<TData = Awaited<ReturnType<typeof getPracticeSession>>, TError = ErrorType<unknown>>(
@@ -301,6 +302,154 @@ export function useGetPracticeSession<TData = Awaited<ReturnType<typeof getPract
 
 
 
+
+export const getExportAccountDataUrl = () => {
+
+
+
+
+  return `/api/account/export`
+}
+
+/**
+ * @summary Export the signed-in learner's account data
+ */
+export const exportAccountData = async ( options?: Parameters<typeof customFetch>[1]): Promise<ExportAccountData200> => {
+
+  return customFetch<ExportAccountData200>(getExportAccountDataUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportAccountDataQueryKey = () => {
+    return [
+    `/api/account/export`
+    ] as const;
+    }
+
+
+export const getExportAccountDataQueryOptions = <TData = Awaited<ReturnType<typeof exportAccountData>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportAccountData>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportAccountDataQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportAccountData>>> = ({ signal }) => exportAccountData({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportAccountData>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportAccountDataQueryResult = NonNullable<Awaited<ReturnType<typeof exportAccountData>>>
+export type ExportAccountDataQueryError = ErrorType<void>
+
+
+/**
+ * @summary Export the signed-in learner's account data
+ */
+
+export function useExportAccountData<TData = Awaited<ReturnType<typeof exportAccountData>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportAccountData>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportAccountDataQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDeleteAccountUrl = () => {
+
+
+
+
+  return `/api/account`
+}
+
+/**
+ * @summary Permanently delete the signed-in learner and all learning data
+ */
+export const deleteAccount = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteAccountUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAccountMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,void, TContext> => {
+
+const mutationKey = ['deleteAccount'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAccount>>, void> = () => {
+
+
+          return  deleteAccount(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAccountMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAccount>>>
+
+    export type DeleteAccountMutationError = ErrorType<void>
+
+    /**
+ * @summary Permanently delete the signed-in learner and all learning data
+ */
+export const useDeleteAccount = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAccount>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDeleteAccountMutationOptions(options));
+    }
 
 export const getGetCurrentSubscriptionUrl = () => {
 

@@ -55,7 +55,7 @@ paths:
     get:
       operationId: getPracticeSession
       tags: [practice]
-      summary: Get anonymous session entitlement and daily usage
+      summary: Get account or device session entitlement and daily usage
       responses:
         "200":
           description: Session state
@@ -64,6 +64,26 @@ paths:
               schema:
                 type: object
                 additionalProperties: true
+  /account/export:
+    get:
+      operationId: exportAccountData
+      tags: [practice]
+      summary: Export the signed-in learner's account data
+      responses:
+        "200":
+          description: Portable account data
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "401": { description: Sign-in required }
+  /account:
+    delete:
+      operationId: deleteAccount
+      tags: [practice]
+      summary: Permanently delete the signed-in learner and all learning data
+      responses:
+        "204": { description: Account deleted }
+        "401": { description: Sign-in required }
   /subscription:
     get:
       operationId: getCurrentSubscription

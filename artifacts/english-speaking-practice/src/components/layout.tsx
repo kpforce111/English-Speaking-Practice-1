@@ -8,10 +8,13 @@ import {
   BarChart2, 
   Sparkles,
   Menu,
-  X
+  X,
+  Settings,
+  LogIn
 } from 'lucide-react';
 import { useState } from 'react';
 import { useGetPracticeSession } from '@workspace/api-client-react';
+import { Show, useUser } from '@clerk/react';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Chat', icon: MessageCircle },
@@ -27,6 +30,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { data: sessionData } = useGetPracticeSession();
   const isPremium = (sessionData as any)?.plan === 'premium';
+  const { user } = useUser();
 
   return (
     <div className="flex min-h-[100dvh] w-full flex-col md:flex-row bg-background">
@@ -73,6 +77,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </Link>
             ))}
             <div className="my-2 h-px bg-border/50" />
+            <Show when="signed-in"><Link href="/settings" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium"><Settings size={18} />Settings</Link></Show>
+            <Show when="signed-out"><Link href="/sign-in" className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium"><LogIn size={18} />Sign in to sync</Link></Show>
             <Link 
               href="/pricing" 
               onClick={() => setMobileMenuOpen(false)}
@@ -117,6 +123,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="mt-auto flex flex-col gap-3">
+          <Show when="signed-in">
+            <Link href="/settings" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary"><Settings size={18} /><span className="truncate">{user?.firstName || 'Settings'}</span></Link>
+          </Show>
+          <Show when="signed-out">
+            <Link href="/sign-in" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-primary hover:bg-secondary"><LogIn size={18} />Sign in to sync</Link>
+          </Show>
           {!isPremium && (
             <div className="rounded-2xl border border-accent/20 bg-accent/5 p-4">
               <p className="text-xs font-semibold text-accent-foreground uppercase tracking-wider">Premium</p>

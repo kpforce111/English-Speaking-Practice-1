@@ -103,6 +103,8 @@ export interface CancellationResponse {
 
 export type GetPracticeSession200 = { [key: string]: unknown };
 
+export type ExportAccountData200 = { [key: string]: unknown };
+
 export type SendVoiceConversationBody = {
   audioBase64: string;
   mimeType?: string;

@@ -42,9 +42,21 @@ export const SendChatMessageResponse = zod.object({
 
 
 /**
- * @summary Get anonymous session entitlement and daily usage
+ * @summary Get account or device session entitlement and daily usage
  */
 export const GetPracticeSessionResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Export the signed-in learner's account data
+ */
+export const ExportAccountDataResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Permanently delete the signed-in learner and all learning data
+ */
+export const DeleteAccountResponse = zod.void()
 
 
 /**

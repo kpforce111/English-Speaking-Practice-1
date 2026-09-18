@@ -1,11 +1,12 @@
-import { integer, jsonb, pgTable, text, timestamp, primaryKey } from "drizzle-orm/pg-core";
+import { integer, jsonb, pgTable, text, timestamp, primaryKey, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
+  clerkUserId: text("clerk_user_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   stripeCustomerId: text("stripe_customer_id"),
   razorpayCustomerId: text("razorpay_customer_id"),
-});
+}, (table) => [uniqueIndex("users_clerk_user_id_unique").on(table.clerkUserId)]);
 
 export const deviceSessions = pgTable("device_sessions", {
   id: text("id").primaryKey(),
