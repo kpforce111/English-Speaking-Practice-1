@@ -17,7 +17,7 @@ app.set("trust proxy", 1);
 
 const configuredAppUrl = publicAppUrl();
 const allowedOrigins = new Set([
-  "https://app.rllora.com",
+  "https://rllora.online",
   "https://english-speaking-practice-1--kpforce.replit.app",
   configuredAppUrl,
 ]);

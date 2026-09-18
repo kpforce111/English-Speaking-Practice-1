@@ -1,4 +1,4 @@
-const PRODUCTION_APP_URL = "https://app.rllora.com";
+const PRODUCTION_APP_URL = "https://rllora.online";
 
 /**
  * Returns the URL users should be sent back to after completing a flow.
