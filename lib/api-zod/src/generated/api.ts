@@ -41,3 +41,186 @@ export const SendChatMessageResponse = zod.object({
 })
 
 
+/**
+ * @summary Get anonymous session entitlement and daily usage
+ */
+export const GetPracticeSessionResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Get the signed session owner's current entitlement and subscription
+ */
+export const GetCurrentSubscriptionResponse = zod.union([zod.object({
+  "provider": zod.enum(['stripe', 'razorpay']),
+  "plan": zod.string(),
+  "status": zod.enum(['trialing', 'active', 'cancel_pending']),
+  "providerStatus": zod.string(),
+  "providerSubscriptionId": zod.string(),
+  "trialEndsAt": zod.coerce.date().nullish(),
+  "currentPeriodEndsAt": zod.coerce.date().nullish(),
+  "cancelPending": zod.boolean()
+}),zod.object({
+  "subscription": zod.null(),
+  "status": zod.enum(['none'])
+})])
+
+
+/**
+ * @summary Schedule cancellation at the end of the current trial or billing period
+ */
+export const CancelCurrentSubscriptionResponse = zod.object({
+  "provider": zod.enum(['stripe', 'razorpay']),
+  "status": zod.enum(['cancel_pending']),
+  "cancelAtPeriodEnd": zod.boolean().optional(),
+  "cancelAtCycleEnd": zod.boolean().optional(),
+  "accessUntil": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Send audio for premium voice conversation
+ */
+
+
+
+export const SendVoiceConversationBody = zod.object({
+  "audioBase64": zod.string(),
+  "mimeType": zod.string().optional(),
+  "scenario": zod.string().optional(),
+  "history": zod.array(zod.object({
+  "role": zod.enum(['user', 'assistant']),
+  "content": zod.string().min(1)
+})).optional()
+})
+
+export const SendVoiceConversationResponse = zod.object({
+  "userTranscript": zod.string(),
+  "assistantTranscript": zod.string(),
+  "audioBase64": zod.string(),
+  "audioMimeType": zod.string().optional(),
+  "secondsUsed": zod.number().optional()
+})
+
+
+/**
+ * @summary Return immediate English correction with Roman Hindi or Urdu explanation
+ */
+export const CorrectPracticeSentenceBody = zod.object({
+  "text": zod.string(),
+  "mode": zod.enum(['soft', 'strict']).optional()
+})
+
+export const CorrectPracticeSentenceResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Translate English and Roman Hindi or Urdu
+ */
+export const TranslatePracticeTextBody = zod.object({
+  "text": zod.string(),
+  "direction": zod.string().optional()
+})
+
+export const TranslatePracticeTextResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Score pronunciation through the configured Language Confidence provider
+ */
+export const AssessPronunciationBody = zod.object({
+  "text": zod.string(),
+  "audioBase64": zod.string(),
+  "mimeType": zod.string()
+})
+
+export const AssessPronunciationResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary List supported roleplay scenarios
+ */
+export const ListRoleplayScenariosResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Send a roleplay message
+ */
+export const SendRoleplayMessageParams = zod.object({
+  "scenario": zod.coerce.string()
+})
+
+export const SendRoleplayMessageBody = zod.object({
+  "message": zod.string()
+})
+
+export const SendRoleplayMessageResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary List structured 10-15 minute lessons by level
+ */
+export const ListDailyLessonsResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Record a lesson attempt and return completion progress
+ */
+export const RecordLessonAttemptParams = zod.object({
+  "lessonId": zod.coerce.string()
+})
+
+export const recordLessonAttemptBodyMinutesMax = 15;
+
+
+
+export const RecordLessonAttemptBody = zod.object({
+  "minutes": zod.number().min(1).max(recordLessonAttemptBodyMinutesMax).optional()
+})
+
+export const RecordLessonAttemptResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Get persisted practice progress
+ */
+export const GetPracticeProgressResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Get the persisted seven-day practice report
+ */
+export const GetWeeklyPracticeReportResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary List trial and premium plan pricing
+ */
+export const ListPremiumPlansResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary List payment methods by country
+ */
+export const ListPaymentOptionsQueryParams = zod.object({
+  "country": zod.coerce.string().optional()
+})
+
+export const ListPaymentOptionsResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Create provider checkout after external billing setup
+ */
+export const CreatePremiumCheckoutResponse = zod.unknown()
+
+
+/**
+ * @summary Process an authenticated Stripe or Razorpay billing webhook
+ */
+export const ProcessBillingWebhookParams = zod.object({
+  "provider": zod.enum(['stripe', 'razorpay'])
+})
+
+export const ProcessBillingWebhookResponse = zod.unknown()
+
+

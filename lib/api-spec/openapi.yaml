@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: chat
     description: English practice conversation
+  - name: practice
+    description: Premium practice, progress, lessons, and billing
 paths:
   /healthz:
     get:
@@ -49,6 +51,288 @@ paths:
           description: Invalid message
         "500":
           description: AI service error
+  /session:
+    get:
+      operationId: getPracticeSession
+      tags: [practice]
+      summary: Get anonymous session entitlement and daily usage
+      responses:
+        "200":
+          description: Session state
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /subscription:
+    get:
+      operationId: getCurrentSubscription
+      tags: [practice]
+      summary: Get the signed session owner's current entitlement and subscription
+      responses:
+        "200":
+          description: Current subscription details or empty free-user state
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/SubscriptionDetails"
+                  - $ref: "#/components/schemas/EmptySubscription"
+  /subscription/cancel:
+    post:
+      operationId: cancelCurrentSubscription
+      tags: [practice]
+      summary: Schedule cancellation at the end of the current trial or billing period
+      responses:
+        "200":
+          description: Cancellation scheduled without removing current access
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CancellationResponse" }
+        "404": { description: No active subscription }
+        "409": { description: Cancellation already pending or unsupported provider }
+        "503": { description: Provider credentials missing }
+  /voice:
+    post:
+      operationId: sendVoiceConversation
+      tags: [practice]
+      summary: Send audio for premium voice conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [audioBase64]
+              properties:
+                audioBase64: { type: string }
+                mimeType: { type: string }
+                scenario: { type: string }
+                history:
+                  type: array
+                  items: { $ref: "#/components/schemas/ChatMessage" }
+      responses:
+        "200":
+          description: Audio response and transcripts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [userTranscript, assistantTranscript, audioBase64]
+                properties:
+                  userTranscript: { type: string }
+                  assistantTranscript: { type: string }
+                  audioBase64: { type: string }
+                  audioMimeType: { type: string }
+                  secondsUsed: { type: number }
+        "402": { description: Premium required }
+        "429": { description: Daily voice limit reached }
+  /correct:
+    post:
+      operationId: correctPracticeSentence
+      tags: [practice]
+      summary: Return immediate English correction with Roman Hindi or Urdu explanation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string }
+                mode: { type: string, enum: [soft, strict] }
+      responses:
+        "200":
+          description: Structured correction
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+  /translate:
+    post:
+      operationId: translatePracticeText
+      tags: [practice]
+      summary: Translate English and Roman Hindi or Urdu
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string }
+                direction: { type: string }
+      responses:
+        "200":
+          description: Translation
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+  /pronunciation:
+    post:
+      operationId: assessPronunciation
+      tags: [practice]
+      summary: Score pronunciation through the configured Language Confidence provider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text, audioBase64, mimeType]
+              properties:
+                text: { type: string }
+                audioBase64: { type: string }
+                mimeType: { type: string }
+      responses:
+        "200":
+          description: Canonical pronunciation assessment
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+  /roleplays:
+    get:
+      operationId: listRoleplayScenarios
+      tags: [practice]
+      summary: List supported roleplay scenarios
+      responses:
+        "200":
+          description: Roleplay catalog
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+  /roleplays/{scenario}:
+    post:
+      operationId: sendRoleplayMessage
+      tags: [practice]
+      summary: Send a roleplay message
+      parameters:
+        - name: scenario
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message: { type: string }
+      responses:
+        "200":
+          description: Roleplay reply and correction
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+  /lessons:
+    get:
+      operationId: listDailyLessons
+      tags: [practice]
+      summary: List structured 10-15 minute lessons by level
+      responses:
+        "200":
+          description: Lesson catalog
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+  /lessons/{lessonId}/attempt:
+    post:
+      operationId: recordLessonAttempt
+      tags: [practice]
+      summary: Record a lesson attempt and return completion progress
+      parameters:
+        - name: lessonId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                minutes: { type: number, minimum: 1, maximum: 15 }
+      responses:
+        "200":
+          description: Lesson progress
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+  /progress:
+    get:
+      operationId: getPracticeProgress
+      tags: [practice]
+      summary: Get persisted practice progress
+      responses:
+        "200":
+          description: Progress summary
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+  /weekly-report:
+    get:
+      operationId: getWeeklyPracticeReport
+      tags: [practice]
+      summary: Get the persisted seven-day practice report
+      responses:
+        "200":
+          description: Weekly report
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+  /plans:
+    get:
+      operationId: listPremiumPlans
+      tags: [practice]
+      summary: List trial and premium plan pricing
+      responses:
+        "200":
+          description: Pricing
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+  /payment-options:
+    get:
+      operationId: listPaymentOptions
+      tags: [practice]
+      summary: List payment methods by country
+      parameters:
+        - name: country
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Available provider options
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+  /checkout:
+    post:
+      operationId: createPremiumCheckout
+      tags: [practice]
+      summary: Create provider checkout after external billing setup
+      responses:
+        "200": { description: Checkout created }
+        "503": { description: Provider not configured }
+  /webhooks/{provider}:
+    post:
+      operationId: processBillingWebhook
+      tags: [practice]
+      summary: Process an authenticated Stripe or Razorpay billing webhook
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema: { type: string, enum: [stripe, razorpay] }
+      responses:
+        "200": { description: Webhook processed }
+        "400": { description: Invalid signature }
+        "503": { description: Provider not configured }
 components:
   schemas:
     HealthStatus:
@@ -87,4 +371,31 @@ components:
         reply:
           type: string
       required: [reply]
+    SubscriptionDetails:
+      type: object
+      required: [provider, plan, status, providerStatus, providerSubscriptionId, cancelPending]
+      properties:
+        provider: { type: string, enum: [stripe, razorpay] }
+        plan: { type: string }
+        status: { type: string, enum: [trialing, active, cancel_pending] }
+        providerStatus: { type: string }
+        providerSubscriptionId: { type: string }
+        trialEndsAt: { type: string, format: date-time, nullable: true }
+        currentPeriodEndsAt: { type: string, format: date-time, nullable: true }
+        cancelPending: { type: boolean }
+    EmptySubscription:
+      type: object
+      required: [subscription, status]
+      properties:
+        subscription: { type: "null" }
+        status: { type: string, enum: [none] }
+    CancellationResponse:
+      type: object
+      required: [provider, status]
+      properties:
+        provider: { type: string, enum: [stripe, razorpay] }
+        status: { type: string, enum: [cancel_pending] }
+        cancelAtPeriodEnd: { type: boolean }
+        cancelAtCycleEnd: { type: boolean }
+        accessUntil: { type: string, format: date-time, nullable: true }
 

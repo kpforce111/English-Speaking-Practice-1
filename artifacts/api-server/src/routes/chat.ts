@@ -4,6 +4,7 @@ import {
   SendChatMessageBody,
   SendChatMessageResponse,
 } from "@workspace/api-zod";
+import { getUserId, recordEvent, releaseText, reserveText, textAllowance, words, entitlement } from "../lib/session";
 
 const router: IRouter = Router();
 
@@ -34,8 +35,21 @@ router.post("/chat", async (req, res): Promise<void> => {
     return;
   }
 
-  const client = new Anthropic({ apiKey });
+  const userId = await getUserId(req, res);
   const { message, history = [] } = parsed.data;
+  const allowance = await textAllowance(userId);
+  const currentWordCount = words(message);
+  const currentPlan = await entitlement(userId);
+  if (currentPlan.effectivePlan === "free" && currentWordCount > 50) {
+    res.status(400).json({ error: "Free messages are limited to 50 words. Please shorten your message or upgrade to Premium.", code: "WORD_LIMIT" });
+    return;
+  }
+  const reservation = await reserveText(userId, allowance.limit);
+  if (!reservation.reserved) {
+    res.status(429).json({ error: `You've reached your ${allowance.limit}-message daily text limit. Upgrade to Premium for more practice.`, code: "TEXT_LIMIT" });
+    return;
+  }
+  const client = new Anthropic({ apiKey });
   const context = [
     ...history,
     { role: "user" as const, content: message },
@@ -60,8 +74,11 @@ router.post("/chat", async (req, res): Promise<void> => {
       return;
     }
 
-    res.json(SendChatMessageResponse.parse({ reply }));
+    const cappedReply = words(reply) > 100 ? reply.split(/\s+/).slice(0, 100).join(" ") : reply;
+    await recordEvent(userId, "chat", message, { reply });
+    res.json({ reply: cappedReply, correction: { available: currentPlan.effectivePlan !== "free", note: currentPlan.effectivePlan === "free" ? "Premium unlocks immediate Roman Hindi/Urdu corrections." : undefined } });
   } catch (error) {
+    await releaseText(userId, reservation.date);
     req.log.error({ error }, "Anthropic chat request failed");
     if (
       error instanceof Error &&

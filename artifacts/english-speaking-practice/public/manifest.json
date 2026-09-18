@@ -1,6 +1,7 @@
 {
   "name": "Rllora AI English Speaking",
   "short_name": "Rllora AI",
+  "id": "rllora-ai-english-speaking",
   "description": "Practice everyday English with Rllora, a friendly AI speaking partner who keeps conversations short, encouraging, and natural.",
   "start_url": "./",
   "scope": "./",
@@ -19,6 +20,22 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "./screenshot-narrow.jpg",
+      "sizes": "402x874",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Rllora AI text conversation practice"
+    },
+    {
+      "src": "./screenshot-wide.jpg",
+      "sizes": "1280x720",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "Rllora AI English practice dashboard"
     }
   ]
 }

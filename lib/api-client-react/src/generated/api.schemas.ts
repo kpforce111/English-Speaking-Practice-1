@@ -37,3 +37,146 @@ export interface ChatMessageResponse {
   reply: string;
 }
 
+export type SubscriptionDetailsProvider = typeof SubscriptionDetailsProvider[keyof typeof SubscriptionDetailsProvider];
+
+
+export const SubscriptionDetailsProvider = {
+  stripe: 'stripe',
+  razorpay: 'razorpay',
+} as const;
+
+export type SubscriptionDetailsStatus = typeof SubscriptionDetailsStatus[keyof typeof SubscriptionDetailsStatus];
+
+
+export const SubscriptionDetailsStatus = {
+  trialing: 'trialing',
+  active: 'active',
+  cancel_pending: 'cancel_pending',
+} as const;
+
+export interface SubscriptionDetails {
+  provider: SubscriptionDetailsProvider;
+  plan: string;
+  status: SubscriptionDetailsStatus;
+  providerStatus: string;
+  providerSubscriptionId: string;
+  trialEndsAt?: string | null;
+  currentPeriodEndsAt?: string | null;
+  cancelPending: boolean;
+}
+
+export type EmptySubscriptionStatus = typeof EmptySubscriptionStatus[keyof typeof EmptySubscriptionStatus];
+
+
+export const EmptySubscriptionStatus = {
+  none: 'none',
+} as const;
+
+export interface EmptySubscription {
+  /** @nullable */
+  subscription: null;
+  status: EmptySubscriptionStatus;
+}
+
+export type CancellationResponseProvider = typeof CancellationResponseProvider[keyof typeof CancellationResponseProvider];
+
+
+export const CancellationResponseProvider = {
+  stripe: 'stripe',
+  razorpay: 'razorpay',
+} as const;
+
+export type CancellationResponseStatus = typeof CancellationResponseStatus[keyof typeof CancellationResponseStatus];
+
+
+export const CancellationResponseStatus = {
+  cancel_pending: 'cancel_pending',
+} as const;
+
+export interface CancellationResponse {
+  provider: CancellationResponseProvider;
+  status: CancellationResponseStatus;
+  cancelAtPeriodEnd?: boolean;
+  cancelAtCycleEnd?: boolean;
+  accessUntil?: string | null;
+}
+
+export type GetPracticeSession200 = { [key: string]: unknown };
+
+export type SendVoiceConversationBody = {
+  audioBase64: string;
+  mimeType?: string;
+  scenario?: string;
+  history?: ChatMessage[];
+};
+
+export type SendVoiceConversation200 = {
+  userTranscript: string;
+  assistantTranscript: string;
+  audioBase64: string;
+  audioMimeType?: string;
+  secondsUsed?: number;
+};
+
+export type CorrectPracticeSentenceBodyMode = typeof CorrectPracticeSentenceBodyMode[keyof typeof CorrectPracticeSentenceBodyMode];
+
+
+export const CorrectPracticeSentenceBodyMode = {
+  soft: 'soft',
+  strict: 'strict',
+} as const;
+
+export type CorrectPracticeSentenceBody = {
+  text: string;
+  mode?: CorrectPracticeSentenceBodyMode;
+};
+
+export type CorrectPracticeSentence200 = { [key: string]: unknown };
+
+export type TranslatePracticeTextBody = {
+  text: string;
+  direction?: string;
+};
+
+export type TranslatePracticeText200 = { [key: string]: unknown };
+
+export type AssessPronunciationBody = {
+  text: string;
+  audioBase64: string;
+  mimeType: string;
+};
+
+export type AssessPronunciation200 = { [key: string]: unknown };
+
+export type ListRoleplayScenarios200 = { [key: string]: unknown };
+
+export type SendRoleplayMessageBody = {
+  message: string;
+};
+
+export type SendRoleplayMessage200 = { [key: string]: unknown };
+
+export type ListDailyLessons200 = { [key: string]: unknown };
+
+export type RecordLessonAttemptBody = {
+  /**
+     * @minimum 1
+     * @maximum 15
+     */
+  minutes?: number;
+};
+
+export type RecordLessonAttempt200 = { [key: string]: unknown };
+
+export type GetPracticeProgress200 = { [key: string]: unknown };
+
+export type GetWeeklyPracticeReport200 = { [key: string]: unknown };
+
+export type ListPremiumPlans200 = { [key: string]: unknown };
+
+export type ListPaymentOptionsParams = {
+country?: string;
+};
+
+export type ListPaymentOptions200 = { [key: string]: unknown };
+
