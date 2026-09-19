@@ -83,7 +83,7 @@ export function Pricing() {
   const plans = (plansData as any)?.plans || [];
   const paymentOptions = (paymentOptionsData as any)?.options || [];
 
-  const trialText = (plansData as any)?.trial || "₹5 for 2-Day Premium Trial — Get full Premium access for 2 days for ₹5. You can cancel anytime during the trial, or continue with Premium after.";
+  const trialText = (plansData as any)?.trial || "After your trial, you will be charged the monthly rate. Cancel anytime.";
 
   const subscription = subData as any;
   const isSubscribed = subscription && ['active', 'trialing', 'cancel_pending'].includes(subscription.status);
@@ -356,7 +356,7 @@ export function Pricing() {
                     <span className="font-serif text-2xl font-medium">₹5</span>
                   </div>
                   <p className="text-xs text-muted-foreground mb-6">
-                    After your trial, you will be charged the {selectedPlan} rate. Cancel anytime.
+                    After your trial, you will be charged the monthly rate. Cancel anytime.
                   </p>
 
                   {error && (

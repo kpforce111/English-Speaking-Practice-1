@@ -24,7 +24,7 @@ function stripEmojis(str: string) {
 
 const firstMessage: ChatMessage = {
   role: 'assistant',
-  content: 'Hi, I’m Mira. Take your time — what has been on your mind today?',
+  content: 'Hi, I’m Rllora AI. Take your time — what has been on your mind today?',
 };
 
 const starterPrompts = [
@@ -140,7 +140,7 @@ export function Home() {
       <div className="mx-auto flex w-full max-w-[900px] flex-1 flex-col px-4 pb-5 md:px-10 md:pb-8 relative z-10">
         <header className="flex h-[76px] shrink-0 items-center justify-between border-b border-border/70 mb-4">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">Chat with Mira</h1>
+            <h1 className="text-xl font-semibold tracking-tight">English Speaking with Rllora AI</h1>
             <p className="text-xs text-muted-foreground mt-0.5">Your quiet space to practice</p>
           </div>
           <div className="flex items-center gap-3">
@@ -170,7 +170,7 @@ export function Home() {
               </div>
               <ul className="mt-4 space-y-3 text-xs leading-5 text-muted-foreground">
                 <li className="flex gap-2"><span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-primary" />Write naturally, even if the sentence is short.</li>
-                <li className="flex gap-2"><span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-primary" />Mira keeps replies brief so you have room to speak.</li>
+                <li className="flex gap-2"><span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-primary" />Rllora AI keeps replies brief so you have room to speak.</li>
                 <li className="flex gap-2"><span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-primary" />Your conversation stays on this device.</li>
               </ul>
             </div>
@@ -189,7 +189,7 @@ export function Home() {
                   <Sparkles size={15} />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold">A conversation with Mira</p>
+                  <p className="text-sm font-semibold">A conversation with Rllora AI</p>
                   <p className="text-[11px] text-muted-foreground">Warm, short, and on your side</p>
                 </div>
               </div>
@@ -270,7 +270,7 @@ export function Home() {
                     }
                   }}
                   aria-label="Your message"
-                  placeholder="Write a sentence to Mira..."
+                  placeholder="Write a sentence to Rllora AI..."
                   rows={1}
                   maxLength={2000}
                   className="max-h-28 min-h-[42px] flex-1 resize-none bg-transparent px-3 py-2.5 text-sm leading-5 text-foreground outline-none placeholder:text-muted-foreground/65"
@@ -315,7 +315,7 @@ function MessageBubble({ message, index }: { message: ChatMessage; index: number
           {message.content}
         </div>
         <p className={`mt-1.5 px-1 text-[10px] uppercase tracking-[0.11em] text-muted-foreground/55 ${isUser ? 'text-right' : 'text-left'}`}>
-          {isUser ? 'You' : 'Mira'}
+          {isUser ? 'You' : 'Rllora AI'}
         </p>
       </div>
     </div>
@@ -329,7 +329,7 @@ function TypingIndicator() {
         <Sparkles size={13} />
       </div>
       <div className="rounded-[1.15rem] rounded-bl-md border border-border/75 bg-background px-5 py-4">
-        <div className="flex items-center gap-1.5" aria-label="Mira is typing">
+        <div className="flex items-center gap-1.5" aria-label="Rllora AI is typing">
           <span className="typing-dot h-1.5 w-1.5 rounded-full bg-primary" />
           <span className="typing-dot h-1.5 w-1.5 rounded-full bg-primary" />
           <span className="typing-dot h-1.5 w-1.5 rounded-full bg-primary" />

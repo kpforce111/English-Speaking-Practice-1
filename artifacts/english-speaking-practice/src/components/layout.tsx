@@ -40,7 +40,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="brand-mark h-8 w-8 rounded-lg shadow-none">
             <MessageCircle size={16} strokeWidth={2.5} />
           </div>
-          <span className="font-semibold text-foreground tracking-tight">Rllora</span>
+          <span className="font-semibold text-foreground tracking-tight">Rllora AI</span>
         </div>
         <div className="flex items-center gap-2">
           {!isPremium && (
@@ -102,7 +102,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="brand-mark h-9 w-9">
             <MessageCircle size={18} strokeWidth={2.5} />
           </div>
-          <span className="font-serif text-xl tracking-tight">Rllora</span>
+          <span className="font-serif text-xl tracking-tight">Rllora AI</span>
         </div>
 
         <nav className="mt-8 flex flex-1 flex-col gap-1.5">

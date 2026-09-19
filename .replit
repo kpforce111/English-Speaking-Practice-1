@@ -18,3 +18,9 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[userenv]
+
+[userenv.shared]
+RAPIDAPI_LANGUAGE_CONFIDENCE_HOST = "scripted-speech-assessment1.p.rapidapi.com"
+RAPIDAPI_LANGUAGE_CONFIDENCE_URL = "https://scripted-speech-assessment1.p.rapidapi.com/speech-assessment/scripted/us"

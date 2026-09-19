@@ -86,7 +86,7 @@ router.post("/chat", async (req, res): Promise<void> => {
     ) {
       res.status(402).json({
         error:
-          "Your Anthropic account needs more credits before Mira can reply. Add credits to the account behind ANTHROPIC_API_KEY, then try again.",
+          "Your Anthropic account needs more credits before Rllora AI can reply. Add credits to the account behind ANTHROPIC_API_KEY, then try again.",
       });
       return;
     }

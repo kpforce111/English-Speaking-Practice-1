@@ -1,5 +1,5 @@
 import { useClerk, useUser } from '@clerk/react';
-import { Download, LogOut, ShieldCheck, Trash2 } from 'lucide-react';
+import { Download, LogOut, Mail, MessageCircle, ShieldCheck, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
@@ -50,6 +50,19 @@ export function Settings() {
             <Button variant="outline" onClick={exportData}><Download /> Export my data</Button>
             <Button variant="outline" onClick={() => signOut({ redirectUrl: basePath || '/' })}><LogOut /> Sign out</Button>
           </div>
+        </section>
+        <section className="mt-6 rounded-2xl border bg-card p-6">
+          <h2 className="font-semibold">Help and support</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Contact the Rllora AI team for account, billing, or learning support.</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <Button variant="outline" asChild>
+              <a href="mailto:hello@rllora.com"><Mail /> hello@rllora.com</a>
+            </Button>
+            <Button variant="outline" asChild>
+              <a href="https://wa.me/918850551703" target="_blank" rel="noreferrer"><MessageCircle /> WhatsApp support</a>
+            </Button>
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">WhatsApp: +91 8850551703</p>
         </section>
         <section className="mt-6 rounded-2xl border border-destructive/25 bg-card p-6">
           <h2 className="font-semibold">Delete account</h2>

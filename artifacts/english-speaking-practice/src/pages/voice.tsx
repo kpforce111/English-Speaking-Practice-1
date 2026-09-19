@@ -159,7 +159,7 @@ function VoicePractice() {
           </div>
           <h1 className="font-serif text-3xl font-medium tracking-tight">Voice Practice</h1>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            Have a natural, spoken conversation with Mira. Premium voice practice is limited to 15 minutes per day.
+            Have a natural, spoken conversation with Rllora AI. Premium voice practice is limited to 15 minutes per day.
           </p>
           <div className="inline-flex items-center justify-center rounded-full bg-secondary/50 px-3 py-1 mt-2">
             <span className="text-xs font-medium text-secondary-foreground">{remainingMinutes} minutes remaining today</span>
@@ -179,7 +179,7 @@ function VoicePractice() {
           {sendVoice.isPending ? (
             <div className="flex flex-col items-center gap-4 animate-in fade-in">
               <Loader2 size={32} className="text-primary animate-spin" />
-              <p className="text-sm font-medium text-muted-foreground">Mira is thinking...</p>
+              <p className="text-sm font-medium text-muted-foreground">Rllora AI is thinking...</p>
             </div>
           ) : aiReply ? (
             <div className="flex flex-col w-full gap-6 animate-in slide-in-from-bottom-4">
@@ -223,7 +223,7 @@ function VoicePractice() {
                     </button>
                   )}
                 </div>
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider text-left pl-2">Mira</span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider text-left pl-2">Rllora AI</span>
               </div>
               
               <button 

@@ -382,7 +382,7 @@ router.get("/weekly-report", async (req, res) => {
   res.json({ period: "last-7-days", highlights: rows.rows, message: "Consistency is progress. Keep one short practice session going each day." });
 });
 
-router.get("/plans", (_req, res) => res.json({ trial: "₹5 for 2-Day Premium Trial — Get full Premium access for 2 days for ₹5. You can cancel anytime during the trial, or continue with Premium after.", plans: Object.entries(plans).map(([id, value]) => ({ id, ...value, bestValue: id === "yearly" })), features: ["Voice Conversation (15 minutes per day)", "Real-Time Correction", "Translation", "Pronunciation + Fluency Score", "Roleplays", "Daily Lessons", "Progress Tracking", "Weekly Report", "Strict Mode and Soft Mode"] }));
+router.get("/plans", (_req, res) => res.json({ trial: "After your trial, you will be charged the monthly rate. Cancel anytime.", plans: Object.entries(plans).map(([id, value]) => ({ id, ...value, bestValue: id === "yearly" })), features: ["Voice Conversation (15 minutes per day)", "Real-Time Correction", "Translation", "Pronunciation + Fluency Score", "Roleplays", "Daily Lessons", "Progress Tracking", "Weekly Report", "Strict Mode and Soft Mode"] }));
 
 router.get("/payment-options", (req, res) => {
   const country = String(req.query.country || "").toUpperCase();
