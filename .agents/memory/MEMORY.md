@@ -1,0 +1,1 @@
+- [RapidAPI pronunciation routing](rapidapi-pronunciation-routing.md) — keep the direct-key path; this API’s generic connector proxy failed before reaching upstream.
