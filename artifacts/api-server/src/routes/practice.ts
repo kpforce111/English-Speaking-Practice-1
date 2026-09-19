@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { Router, type IRouter } from "express";
 import { clerkClient } from "@clerk/express";
 import Anthropic from "@anthropic-ai/sdk";
+import { ReplitConnectors } from "@replit/connectors-sdk";
 import { authenticatedClerkUserId, getUserId, entitlement, requirePremium, words, recordEvent, reserveVoice, releaseVoice } from "../lib/session";
 import { pool } from "@workspace/db";
 import { ensureCompatibleFormat, speechToText } from "@workspace/integrations-openai-ai-server/audio";
@@ -14,6 +15,7 @@ import Stripe from "stripe";
 import { publicAppUrl } from "../lib/publicAppUrl";
 
 const router: IRouter = Router();
+const connectors = new ReplitConnectors();
 const scenarios = ["job-interview", "office", "shopping", "travel", "doctor", "customer-service", "bpo", "daily-life"] as const;
 const levels = ["beginner", "intermediate", "advanced"] as const;
 const plans = {
@@ -263,8 +265,6 @@ router.post("/voice", async (req, res) => {
 
 router.post("/pronunciation", async (req, res) => {
   const userId = await requirePremium(req, res); if (!userId) return;
-  const endpoint = process.env.RAPIDAPI_LANGUAGE_CONFIDENCE_URL;
-  if (!process.env.RAPIDAPI_KEY || !endpoint) { res.status(503).json({ error: "Pronunciation scoring requires RAPIDAPI_KEY and RAPIDAPI_LANGUAGE_CONFIDENCE_URL configuration.", code: "PRONUNCIATION_NOT_CONFIGURED" }); return; }
   if (typeof req.body?.text !== "string" || !req.body.text.trim()) { res.status(400).json({ error: "text is required for pronunciation scoring" }); return; }
   let decoded: { input: Buffer; seconds: number };
   try { decoded = await decodedAudio(req.body?.audioBase64, req.body?.mimeType || "audio/webm"); }
@@ -272,25 +272,65 @@ router.post("/pronunciation", async (req, res) => {
   const reservation = await reserveVoice(userId, decoded.seconds);
   if (!reservation.reserved) { res.status(429).json({ error: "You've used your 15-minute Premium voice limit for today.", code: "VOICE_LIMIT" }); return; }
   try {
-    const upstream = await fetch(endpoint, {
+    const mimeType = String(req.body?.mimeType || "audio/webm").split(";")[0].trim().toLowerCase();
+    const audioFormat = mimeType === "audio/mpeg" ? "mp3" : mimeType.replace("audio/", "").replace("x-", "");
+    const body = JSON.stringify({
+      audio_base64: req.body?.audioBase64 || "",
+      audio_format: audioFormat,
+      expected_text: req.body.text.trim(),
+    });
+    const endpoint = process.env.RAPIDAPI_LANGUAGE_CONFIDENCE_URL;
+    const rapidApiKey = process.env.RAPIDAPI_KEY;
+    const upstream = rapidApiKey && endpoint
+      ? await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-rapidapi-key": rapidApiKey,
+            ...(process.env.RAPIDAPI_LANGUAGE_CONFIDENCE_HOST ? { "x-rapidapi-host": process.env.RAPIDAPI_LANGUAGE_CONFIDENCE_HOST } : {}),
+          },
+          body,
+        })
+      : await connectors.proxy("rapidapi", "/speech-assessment/scripted/us", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-rapidapi-key": process.env.RAPIDAPI_KEY,
-        ...(process.env.RAPIDAPI_LANGUAGE_CONFIDENCE_HOST ? { "x-rapidapi-host": process.env.RAPIDAPI_LANGUAGE_CONFIDENCE_HOST } : {}),
       },
-      body: JSON.stringify({ text: req.body?.text || "", audioBase64: req.body?.audioBase64 || "" }),
+      body,
     });
-    if (!upstream.ok) { res.status(502).json({ error: "Language Confidence API returned an error." }); return; }
+    if (!upstream.ok) {
+      await releaseVoice(userId, reservation.date, decoded.seconds);
+      const upstreamBody = await upstream.text();
+      req.log.error({ status: upstream.status, body: upstreamBody.slice(0, 500) }, "pronunciation provider returned an error");
+      const code = upstream.status === 401 || upstream.status === 403
+        ? "PRONUNCIATION_PROVIDER_AUTH"
+        : upstream.status === 429
+          ? "PRONUNCIATION_PROVIDER_LIMIT"
+          : "PRONUNCIATION_PROVIDER_ERROR";
+      res.status(502).json({ error: "Pronunciation scoring provider returned an error.", code });
+      return;
+    }
     const raw = await upstream.json() as Record<string, any>;
-    const wordsResult = Array.isArray(raw.words) ? raw.words : Array.isArray(raw.word_scores) ? raw.word_scores : [];
+    const pronunciation = raw.pronunciation && typeof raw.pronunciation === "object" ? raw.pronunciation : {};
+    const fluency = raw.fluency && typeof raw.fluency === "object" ? raw.fluency : {};
+    const wordsResult = Array.isArray(pronunciation.words) ? pronunciation.words : Array.isArray(raw.words) ? raw.words : Array.isArray(raw.word_scores) ? raw.word_scores : [];
     const normalizedWords = wordsResult.map((item: any) => ({
-      word: String(item.word || item.text || ""),
-      score: Number(item.accuracy ?? item.score ?? item.confidence ?? 0),
-      correct: Number(item.accuracy ?? item.score ?? item.confidence ?? 0) >= 70,
+      word: String(item.word_text || item.word || item.text || ""),
+      score: Number(item.word_score ?? item.accuracy ?? item.score ?? item.confidence ?? 0),
+      correct: Number(item.word_score ?? item.accuracy ?? item.score ?? item.confidence ?? 0) >= 70,
     }));
-    const accuracy = Number(raw.accuracy ?? raw.overall_accuracy ?? (normalizedWords.length ? normalizedWords.reduce((sum, item) => sum + item.score, 0) / normalizedWords.length : 0));
-    const result = { accuracyScore: Math.round(accuracy), fluencyScore: Number(raw.fluency ?? raw.fluency_score ?? accuracy), words: normalizedWords, feedback: raw.feedback || "Practice this sentence once more and focus on the highlighted words." };
+    const accuracy = Number(pronunciation.overall_score ?? raw.accuracy ?? raw.overall_accuracy ?? (normalizedWords.length ? normalizedWords.reduce((sum: number, item: { score: number }) => sum + item.score, 0) / normalizedWords.length : 0));
+    const fluencyScore = Number(fluency.overall_score ?? raw.fluency_score ?? accuracy);
+    const fluencyFeedback = Object.values(fluency)
+      .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+      .map((item) => item.feedback_text)
+      .find((item): item is string => typeof item === "string" && Boolean(item));
+    const result = {
+      accuracyScore: Math.round(accuracy),
+      fluencyScore: Math.round(fluencyScore),
+      words: normalizedWords,
+      feedback: fluencyFeedback || raw.feedback || "Practice this sentence once more and focus on the highlighted words.",
+    };
     await recordEvent(userId, "pronunciation", req.body?.text, { result });
     res.json(result);
   } catch (error) { await releaseVoice(userId, reservation.date, decoded.seconds); req.log.error({ error }, "pronunciation request failed"); res.status(503).json({ error: "Pronunciation scoring is temporarily unavailable." }); }
