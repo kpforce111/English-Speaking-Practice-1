@@ -148,8 +148,8 @@ export function Home() {
       <div className="mx-auto flex w-full max-w-[900px] flex-1 flex-col px-4 pb-5 md:px-10 md:pb-8 relative z-10">
         <header className="flex shrink-0 items-center justify-between border-b border-border/70 py-4 mb-2">
           <div>
-            <h1 className="text-[18px] md:text-[20px] font-semibold tracking-tight">English Speaking with Rllora AI</h1>
-            <p className="text-[13px] text-muted-foreground mt-0.5">Your quiet space to practice</p>
+            <h1 className="text-[18px] md:text-[20px] font-semibold tracking-tight">Chat with Mira</h1>
+            <p className="text-[13px] text-muted-foreground mt-0.5">Practice English for free with Mira — anytime, anywhere.</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="md:hidden flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded-md text-[13px] text-muted-foreground mr-1">
@@ -208,8 +208,8 @@ export function Home() {
                   <Sparkles size={18} />
                 </div>
                 <div>
-                  <p className="text-[16px] font-semibold">Chat with Mira</p>
-                  <p className="text-[13px] text-muted-foreground">Practice English for free with Mira — anytime, anywhere.</p>
+                  <p className="text-[16px] font-semibold">A conversation with Mira</p>
+                  <p className="text-[13px] text-muted-foreground">Warm, short, and on your side.</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
