@@ -90,7 +90,7 @@ export function Admin() {
           <p className="mt-3 text-sm text-muted-foreground">{error}</p>
           <p className="mt-2 text-sm text-muted-foreground">Sign in with the verified owner email: hello@rllora.com</p>
           <Button asChild className="mt-6 w-full"><Link href="/sign-in">Sign in as owner</Link></Button>
-          <Button asChild variant="ghost" className="mt-2 w-full"><Link href="/">Return to app</Link></Button>
+          <Button asChild variant="ghost" className="mt-2 w-full"><Link href="/home">Return to app</Link></Button>
         </div>
       </div>
     );
@@ -104,7 +104,7 @@ export function Admin() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck size={20} /></div>
             <div><h1 className="font-semibold">Rllora AI Admin</h1><p className="text-xs text-muted-foreground">{ownerEmail} · Owner</p></div>
           </div>
-          <Button asChild variant="outline" size="sm"><Link href="/"><ArrowLeft size={15} /> App</Link></Button>
+          <Button asChild variant="outline" size="sm"><Link href="/home"><ArrowLeft size={15} /> App</Link></Button>
         </div>
       </header>
 

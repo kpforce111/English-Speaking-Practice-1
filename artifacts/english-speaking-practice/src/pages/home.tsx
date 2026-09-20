@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useSendChatMessage, type ChatMessage } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Link } from 'wouter';
 import {
   Check,
   Info,
@@ -10,13 +9,7 @@ import {
   SendHorizontal,
   Sparkles,
   Trash2,
-  X,
-  MessageCircle,
-  Mic,
-  Languages,
-  Users,
-  GraduationCap,
-  BarChart2
+  X
 } from 'lucide-react';
 import { useGetPracticeSession } from '@workspace/api-client-react';
 
@@ -35,15 +28,6 @@ const starterPrompts = [
   'Tell me about your morning',
   'I want to talk about food',
   'Help me practice for work',
-];
-
-const NAV_BOXES = [
-  { href: '/', label: 'Chat', icon: MessageCircle, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' },
-  { href: '/voice', label: 'Voice', icon: Mic, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
-  { href: '/translate', label: 'Translate', icon: Languages, color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' },
-  { href: '/roleplays', label: 'Roleplays', icon: Users, color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' },
-  { href: '/lessons', label: 'Lessons', icon: GraduationCap, color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300' },
-  { href: '/progress', label: 'Progress', icon: BarChart2, color: 'bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300' },
 ];
 
 function getRequestErrorMessage(requestError: unknown): string {
@@ -68,7 +52,7 @@ function getSavedMessages(): ChatMessage[] {
   }
 }
 
-export function Home() {
+export function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>(getSavedMessages);
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -145,8 +129,8 @@ export function Home() {
 
   return (
     <div className="practice-page flex min-h-[100dvh] w-full bg-background relative">
-      <div className="mx-auto flex w-full max-w-[900px] flex-1 flex-col px-4 pb-5 md:px-10 md:pb-8 relative z-10">
-        <header className="flex shrink-0 items-center justify-between border-b border-border/70 py-4 mb-2">
+      <div className="mx-auto flex w-full max-w-[900px] flex-1 flex-col px-4 pb-5 pt-10 md:px-10 md:pb-8 md:pt-14 relative z-10">
+        <header className="flex shrink-0 items-center justify-between border-b border-border/70 py-4 mb-6">
           <div>
             <h1 className="text-[18px] md:text-[20px] font-semibold tracking-tight">Chat with Mira</h1>
             <p className="text-[13px] text-muted-foreground mt-0.5">Practice English for free with Mira — anytime, anywhere.</p>
@@ -165,17 +149,6 @@ export function Home() {
             </button>
           </div>
         </header>
-
-        <div className="grid grid-cols-3 gap-3 mb-6 sm:grid-cols-6 sm:gap-4">
-          {NAV_BOXES.map((box) => (
-            <Link key={box.href} href={box.href} className="flex flex-col items-center gap-2 rounded-2xl border border-border/50 bg-card p-3 transition-transform hover:scale-[1.02] active:scale-95 shadow-sm">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-full ${box.color}`}>
-                <box.icon size={22} />
-              </div>
-              <span className="text-[14px] font-medium text-foreground">{box.label}</span>
-            </Link>
-          ))}
-        </div>
 
         <div className="relative flex min-h-0 flex-1 flex-col">
           {showGuide && (

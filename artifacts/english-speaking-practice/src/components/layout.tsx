@@ -1,23 +1,13 @@
-import { Link, useLocation } from 'wouter';
-import { 
-  MessageCircle, 
-  Mic, 
-  Languages, 
-  Users, 
-  GraduationCap, 
-  BarChart2, 
-  Sparkles,
-  Menu,
-  X,
-  Settings,
-  LogIn
-} from 'lucide-react';
 import { useState } from 'react';
-import { useGetPracticeSession } from '@workspace/api-client-react';
+import { Link, useLocation } from 'wouter';
+import { BarChart2, GraduationCap, Languages, LogIn, Menu, MessageCircle, Mic, Settings, Sparkles, Users, X } from 'lucide-react';
 import { Show, useUser } from '@clerk/react';
+import { useGetPracticeSession } from '@workspace/api-client-react';
+import rlloraLogo from '@assets/IMG-20260917-WA0002_1789621084381.jpg';
 
-const NAV_ITEMS = [
-  { href: '/', label: 'Chat', icon: MessageCircle },
+const navItems = [
+  { href: '/home', label: 'Home', icon: Sparkles },
+  { href: '/chat', label: 'Chat', icon: MessageCircle },
   { href: '/voice', label: 'Voice', icon: Mic },
   { href: '/translate', label: 'Translate', icon: Languages },
   { href: '/roleplays', label: 'Roleplays', icon: Users },
@@ -27,135 +17,52 @@ const NAV_ITEMS = [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const { data: sessionData } = useGetPracticeSession();
-  const isPremium = (sessionData as any)?.plan === 'premium';
   const { user } = useUser();
+  const isPremium = (sessionData as any)?.plan === 'premium';
+  const close = () => setIsOpen(false);
 
   return (
-    <div className="flex min-h-[100dvh] w-full flex-col md:flex-row bg-background">
-      {/* Mobile Header */}
-      <header className="flex h-[60px] shrink-0 items-center justify-between border-b border-border/70 px-4 md:hidden bg-card z-30">
-        <div className="flex items-center gap-2">
-          <div className="brand-mark h-8 w-8 rounded-lg shadow-none">
-            <MessageCircle size={16} strokeWidth={2.5} />
-          </div>
-          <span className="font-semibold text-foreground tracking-tight">Rllora AI</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {!isPremium && (
-            <Link href="/pricing" className="flex items-center gap-1.5 rounded-full bg-accent/20 px-3 py-1.5 text-xs font-semibold text-accent-foreground">
-              <Sparkles size={12} /> Pro
-            </Link>
-          )}
-          <button 
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
-          >
-            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </div>
+    <div className="min-h-[100dvh] bg-background">
+      <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-border/70 bg-card/95 px-4 backdrop-blur md:px-7">
+        <Link href="/home" className="flex items-center gap-3" aria-label="Go to Rllora home">
+          <img src={rlloraLogo} alt="" className="h-12 w-12 rounded-xl object-cover shadow-sm" />
+          <div className="leading-tight"><p className="text-lg font-bold">Rllora AI</p><p className="text-sm font-semibold text-muted-foreground">Speak · Learn · Grow</p></div>
+        </Link>
+        <button type="button" onClick={() => setIsOpen(true)} aria-label="Open navigation menu" className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-background text-foreground shadow-sm transition-colors hover:bg-secondary">
+          <Menu size={24} />
+        </button>
       </header>
 
-      {/* Mobile Menu Overlay */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 top-[60px] z-20 bg-background md:hidden">
-          <nav className="flex flex-col p-4 gap-2">
-            {NAV_ITEMS.map((item) => (
-              <Link 
-                key={item.href} 
-                href={item.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
-                  location === item.href 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'text-muted-foreground hover:bg-secondary hover:text-secondary-foreground'
-                }`}
-              >
-                <item.icon size={18} />
-                {item.label}
+      {isOpen && (
+        <div className="fixed inset-0 z-50">
+          <button type="button" aria-label="Close navigation menu" onClick={close} className="absolute inset-0 bg-foreground/30 backdrop-blur-sm" />
+          <aside className="relative flex h-full w-[min(21rem,88vw)] flex-col border-r border-border bg-card p-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border pb-5">
+              <Link href="/home" onClick={close} className="flex items-center gap-3">
+                <img src={rlloraLogo} alt="Rllora AI logo" className="h-12 w-12 rounded-xl object-cover" />
+                <div><p className="text-lg font-bold">Rllora AI</p><p className="text-sm font-semibold text-muted-foreground">Speak · Learn · Grow</p></div>
               </Link>
-            ))}
-            <div className="my-2 h-px bg-border/50" />
-            <Show when="signed-in"><Link href="/settings" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium"><Settings size={18} />Settings</Link></Show>
-            <Show when="signed-out"><Link href="/sign-in" className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium"><LogIn size={18} />Sign in to sync</Link></Show>
-            <Link 
-              href="/pricing" 
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-accent-foreground bg-accent/10"
-            >
-              <Sparkles size={18} />
-              Upgrade to Premium
-            </Link>
-            <div className="mt-4 flex gap-4 px-4 text-xs text-muted-foreground/60">
-              <Link href="/privacy">Privacy</Link>
-              <Link href="/terms">Terms</Link>
-              <Link href="/support">Support</Link>
+              <button type="button" onClick={close} aria-label="Close navigation menu" className="rounded-xl p-3 hover:bg-secondary"><X size={22} /></button>
             </div>
-          </nav>
+            <nav className="mt-6 space-y-2">
+              {navItems.map(({ href, label, icon: Icon }) => (
+                <Link key={href} href={href} onClick={close} className={`flex items-center gap-4 rounded-2xl px-4 py-3.5 text-lg font-bold transition-colors ${location === href ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-secondary'}`}>
+                  <Icon size={21} /> {label}
+                </Link>
+              ))}
+            </nav>
+            <div className="mt-auto space-y-3 border-t border-border pt-5">
+              <Show when="signed-in"><Link href="/settings" onClick={close} className="flex items-center gap-4 rounded-2xl px-4 py-3 text-base font-bold hover:bg-secondary"><Settings size={20} /> {user?.firstName || 'Settings'}</Link></Show>
+              <Show when="signed-out"><Link href="/sign-in" onClick={close} className="flex items-center gap-4 rounded-2xl px-4 py-3 text-base font-bold hover:bg-secondary"><LogIn size={20} /> Sign in to sync</Link></Show>
+              {!isPremium && <Link href="/pricing" onClick={close} className="flex items-center justify-center gap-2 rounded-2xl bg-accent px-4 py-3.5 text-base font-bold text-accent-foreground shadow-sm"><Sparkles size={18} /> Start 2-Day Trial – ₹5</Link>}
+              <div className="flex gap-4 px-2 pt-2 text-sm font-semibold text-muted-foreground"><Link href="/about" onClick={close}>About</Link><Link href="/privacy" onClick={close}>Privacy</Link><Link href="/support" onClick={close}>Support</Link></div>
+            </div>
+          </aside>
         </div>
       )}
-
-      {/* Desktop Sidebar */}
-      <aside className="hidden w-[260px] shrink-0 flex-col border-r border-border/50 bg-card px-5 py-6 md:flex">
-        <div className="flex items-center gap-3 px-2">
-          <div className="brand-mark h-9 w-9">
-            <MessageCircle size={18} strokeWidth={2.5} />
-          </div>
-          <span className="font-serif text-xl tracking-tight">Rllora AI</span>
-        </div>
-
-        <nav className="mt-8 flex flex-1 flex-col gap-1.5">
-          {NAV_ITEMS.map((item) => (
-            <Link 
-              key={item.href} 
-              href={item.href}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                location === item.href 
-                  ? 'bg-primary/10 text-primary' 
-                  : 'text-muted-foreground hover:bg-secondary hover:text-secondary-foreground'
-              }`}
-            >
-              <item.icon size={18} className={location === item.href ? 'text-primary' : 'text-muted-foreground'} />
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="mt-auto flex flex-col gap-3">
-          <Show when="signed-in">
-            <Link href="/settings" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary"><Settings size={18} /><span className="truncate">{user?.firstName || 'Settings'}</span></Link>
-          </Show>
-          <Show when="signed-out">
-            <Link href="/sign-in" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-primary hover:bg-secondary"><LogIn size={18} />Sign in to sync</Link>
-          </Show>
-          {!isPremium && (
-            <div className="rounded-2xl border border-accent/20 bg-accent/5 p-4">
-              <p className="text-xs font-semibold text-accent-foreground uppercase tracking-wider">Premium</p>
-              <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
-                Unlock voice conversations, roleplays, and lessons.
-              </p>
-              <Link 
-                href="/pricing" 
-                className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-accent text-accent-foreground px-3 py-2 text-xs font-semibold shadow-sm hover:brightness-110 transition-all"
-              >
-                <Sparkles size={14} /> Upgrade
-              </Link>
-            </div>
-          )}
-          <div className="flex flex-wrap gap-x-3 gap-y-1 px-2 text-[10px] text-muted-foreground/50">
-            <Link href="/about" className="hover:text-muted-foreground">About</Link>
-            <Link href="/privacy" className="hover:text-muted-foreground">Privacy</Link>
-            <Link href="/terms" className="hover:text-muted-foreground">Terms</Link>
-            <Link href="/support" className="hover:text-muted-foreground">Support</Link>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex min-w-0 flex-1 flex-col relative z-0">
-        {children}
-      </main>
+      {children}
     </div>
   );
 }

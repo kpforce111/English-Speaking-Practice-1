@@ -69,7 +69,7 @@ export function Settings() {
           <p className="mt-2 text-sm text-muted-foreground">Permanently removes your profile and all stored learning data. Cancel an active subscription first to stop future provider charges.</p>
           <Button className="mt-4" variant="destructive" disabled={deleting} onClick={deleteAccount}><Trash2 /> {deleting ? 'Deleting…' : 'Delete my account'}</Button>
         </section>
-        <Button variant="ghost" className="mt-6" onClick={() => setLocation('/')}>Back to practice</Button>
+        <Button variant="ghost" className="mt-6" onClick={() => setLocation('/home')}>Back to practice</Button>
       </div>
     </div>
   );

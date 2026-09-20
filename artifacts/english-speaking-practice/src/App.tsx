@@ -9,7 +9,9 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { Redirect, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
 import { Layout } from '@/components/layout';
-import { Home } from '@/pages/home';
+import { Chat } from '@/pages/home';
+import { Dashboard } from '@/pages/dashboard';
+import { Welcome } from '@/pages/welcome';
 import { Voice } from '@/pages/voice';
 import { Translate } from '@/pages/translate';
 import { Roleplays } from '@/pages/roleplays';
@@ -126,7 +128,9 @@ function Router() {
           <Route>
           <Layout>
           <Switch>
-          <Route path="/" component={Home} />
+           <Route path="/" component={Welcome} />
+           <Route path="/home" component={Dashboard} />
+           <Route path="/chat" component={Chat} />
           <Route path="/voice" component={Voice} />
           <Route path="/translate" component={Translate} />
           <Route path="/roleplays" component={Roleplays} />
