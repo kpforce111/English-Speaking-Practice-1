@@ -20,6 +20,7 @@ import { Pricing } from '@/pages/pricing';
 import { Privacy, Terms, About, Support } from '@/pages/static-pages';
 import NotFound from '@/pages/not-found';
 import { Settings } from '@/pages/settings';
+import { Admin } from '@/pages/admin';
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -60,6 +61,7 @@ function Router() {
         <Switch>
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />
+          <Route path="/admin" component={Admin} />
           <Route>
           <Layout>
           <Switch>
