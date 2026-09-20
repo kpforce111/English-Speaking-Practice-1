@@ -1,12 +1,20 @@
-import { Check, ChevronRight, Sparkles } from 'lucide-react';
+import { BarChart2, GraduationCap, Languages, MessageCircle, Mic, Sparkles, Users } from 'lucide-react';
 import { Link } from 'wouter';
 import { useListPremiumPlans } from '@workspace/api-client-react';
-import rlloraLogo from '@assets/IMG-20260917-WA0002_1789621084381.jpg';
 
 const fallbackPlans = [
   { id: 'monthly', label: 'Monthly', price: '₹399', detail: 'per month' },
   { id: 'quarterly', label: 'Quarterly', price: '₹999', detail: 'every 3 months · Save 17%' },
   { id: 'yearly', label: 'Yearly', price: '₹2,999', detail: 'every 12 months · Save 37%' },
+];
+
+const features = [
+  { href: '/chat', label: 'Chat', description: 'Talk with Mira', icon: MessageCircle },
+  { href: '/voice', label: 'Voice', description: 'Speak naturally', icon: Mic },
+  { href: '/translate', label: 'Translate', description: 'Understand clearly', icon: Languages },
+  { href: '/roleplays', label: 'Roleplays', description: 'Practice real life', icon: Users },
+  { href: '/lessons', label: 'Lessons', description: 'Build every day', icon: GraduationCap },
+  { href: '/progress', label: 'Progress', description: 'See your growth', icon: BarChart2 },
 ];
 
 function planInfo(plan: { id: string; label?: string }) {
@@ -20,23 +28,30 @@ export function Welcome() {
   const plans = ((data as any)?.plans?.length ? (data as any).plans.map(planInfo) : fallbackPlans);
 
   return (
-    <main className="practice-page min-h-[100dvh] px-5 py-10 md:px-10 md:py-16">
+    <main className="practice-page min-h-[100dvh] px-5 py-8 md:px-10 md:py-12">
       <section className="mx-auto max-w-5xl">
-        <div className="mb-10 flex items-center gap-4">
-          <img src={rlloraLogo} alt="Rllora AI — Speak, Learn, Grow" className="h-16 w-16 rounded-2xl object-cover shadow-lg" />
-          <div><p className="text-2xl font-bold">Rllora AI</p><p className="text-base font-semibold text-muted-foreground">Speak · Learn · Grow</p></div>
-        </div>
         <div className="rounded-[2rem] border border-border/70 bg-card p-6 shadow-xl md:p-10">
-          <div className="max-w-3xl">
+          <div className="text-center">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-bold text-primary"><Sparkles size={17} /> Start with confidence</div>
             <h1 className="text-3xl font-bold tracking-tight md:text-5xl">Welcome to Rllora AI English Speaking!</h1>
-            <p className="mt-5 text-xl font-semibold leading-relaxed">Create your account for just ₹5 and get a 2-day free trial.</p>
-            <ul className="mt-7 grid gap-4 text-lg font-semibold leading-relaxed md:grid-cols-3">
-              {['Full access to English speaking practice for 2 days', 'Continue your subscription if you like it', 'Cancel anytime before the trial ends if it’s not for you — no extra charges'].map((item) => (
-                <li key={item} className="flex gap-3 rounded-2xl bg-secondary/55 p-4"><Check className="mt-1 shrink-0 text-primary" size={20} strokeWidth={3} /><span>{item}</span></li>
-              ))}
-            </ul>
+            <Link href="/sign-up?redirect_url=/pricing" className="mx-auto mt-7 flex w-full max-w-xl flex-col items-center justify-center rounded-2xl bg-purple-600 px-6 py-4 text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-purple-700">
+              <span className="text-lg font-extrabold md:text-xl">Create Account &amp; Start Free Trial – ₹5</span>
+              <span className="mt-1 text-base font-semibold text-purple-100">Get full access for 2 days</span>
+            </Link>
           </div>
+
+          <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-5">
+            {features.map(({ href, label, description, icon: Icon }) => (
+              <Link key={href} href={href} className="flex min-h-44 flex-col items-center justify-center rounded-3xl border border-border bg-background p-5 text-center shadow-sm transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-md">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                  <Icon size={31} strokeWidth={2.5} />
+                </div>
+                <h2 className="mt-4 text-xl font-extrabold md:text-2xl">{label}</h2>
+                <p className="mt-1 text-base font-semibold text-muted-foreground md:text-lg">{description}</p>
+              </Link>
+            ))}
+          </div>
+
           <div className="mt-10 border-t border-border pt-8">
             <div className="mb-5"><h2 className="text-2xl font-bold">Choose what happens after your trial</h2><p className="mt-2 text-lg font-medium text-muted-foreground">Your ₹5 trial gives you Premium access for two days. If you continue, select the plan that fits you best.</p></div>
             <div className="grid gap-4 md:grid-cols-3">
@@ -51,9 +66,8 @@ export function Welcome() {
               ))}
             </div>
           </div>
-          <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-            <Link href="/sign-up?redirect_url=/pricing" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-lg font-bold text-primary-foreground shadow-lg transition-transform hover:-translate-y-0.5">Start 2-Day Free Trial – ₹5 <ChevronRight size={20} /></Link>
-            <Link href="/home" className="inline-flex items-center justify-center rounded-2xl border border-border bg-background px-6 py-4 text-lg font-bold text-foreground hover:bg-secondary">Explore Rllora first</Link>
+          <div className="mt-8 overflow-x-auto rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-center text-amber-950">
+            <p className="min-w-max text-base font-bold md:text-lg">If not satisfied, cancel it to avoid auto-payment.</p>
           </div>
         </div>
       </section>
