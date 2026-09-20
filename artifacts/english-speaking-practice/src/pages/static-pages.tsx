@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Shield, FileText, Info, HelpCircle, Mail, MessageCircle } from 'lucide-react';
+import { Shield, FileText, Info, HelpCircle, Mail, MessageCircle, ReceiptIndianRupee } from 'lucide-react';
 import { Link } from 'wouter';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -40,6 +40,18 @@ const termsFallback: LegalContent = {
     { heading: '2. Subscriptions, Auto-Renewal, and Cancellation', body: 'Premium features require an active subscription. Subscriptions automatically renew at the end of each billing period (monthly, quarterly, or yearly) unless canceled. You may cancel your subscription at any time through your account settings or by contacting support. Cancellation stops future charges but does not refund past periods.' },
     { heading: '3. Acceptable Use', body: 'You agree to use the AI practice tools for language learning purposes only. Do not attempt to bypass rate limits or misuse the AI models to generate prohibited content.' },
     { heading: '4. Disclaimers', body: 'Rllora AI is an educational tool. It does not provide medical, legal, or emergency advice. Roleplay scenarios are for language practice only.' },
+  ],
+};
+
+const refundFallback: LegalContent = {
+  title: 'Refund Policy',
+  description: 'How cancellations, trial fees, and subscription charges are handled.',
+  sections: [
+    { heading: '1. Subscription Cancellation', body: 'You may cancel your subscription at any time through your account settings or by contacting Support. Cancellation stops the subscription from renewing at the end of your current billing period. You will continue to have access to Premium features until that paid period ends.' },
+    { heading: '2. ₹5 Trial Fee', body: 'The ₹5 fee for the 2-day trial is non-refundable. To avoid being charged for a paid subscription, you must cancel before the trial ends. Canceling during the trial stops the next subscription charge but does not refund the ₹5 trial fee.' },
+    { heading: '3. Monthly, Quarterly, and Yearly Plans', body: 'Charges for monthly, quarterly, and yearly plans are non-refundable once a billing period has started. If you cancel after a renewal or initial subscription charge, no full or partial refund, credit, or prorated refund will be issued for the unused portion of that billing period. Your Premium access will remain available until the end of the paid period.' },
+    { heading: '4. Billing Problems and Exceptional Reviews', body: 'If you believe you were charged more than once, charged after a timely cancellation, or charged without authorization, contact us through the Support page as soon as possible. We will review verified billing errors and may issue a refund where appropriate. Nothing in this policy limits any refund rights required by applicable law.' },
+    { heading: '5. How to Request a Review', body: 'Submit your request through the Rllora AI Support page with the account used for the purchase, the charge date, the plan, and a brief explanation. Do not include your full card number, UPI PIN, password, or other sensitive payment credentials.' },
   ],
 };
 
@@ -86,6 +98,22 @@ export function Terms() {
       <PageHeader 
         title={content.title}
         icon={FileText} 
+        description={content.description}
+      />
+      <div className="prose prose-sm prose-gray dark:prose-invert max-w-none">
+        {content.sections.map((section) => <section key={section.heading}><h3>{section.heading}</h3><p>{section.body}</p></section>)}
+      </div>
+    </PageContainer>
+  );
+}
+
+export function Refund() {
+  const content = useManagedContent<LegalContent>('legal/refund', refundFallback);
+  return (
+    <PageContainer>
+      <PageHeader
+        title={content.title}
+        icon={ReceiptIndianRupee}
         description={content.description}
       />
       <div className="prose prose-sm prose-gray dark:prose-invert max-w-none">

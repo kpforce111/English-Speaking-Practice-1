@@ -19,7 +19,7 @@ import { RoleplayScenario } from '@/pages/roleplay-scenario';
 import { Lessons } from '@/pages/lessons';
 import { Progress } from '@/pages/progress';
 import { Pricing } from '@/pages/pricing';
-import { Privacy, Terms, About, Support } from '@/pages/static-pages';
+import { Privacy, Terms, Refund, About, Support } from '@/pages/static-pages';
 import NotFound from '@/pages/not-found';
 import { Settings } from '@/pages/settings';
 import { Admin } from '@/pages/admin';
@@ -142,6 +142,7 @@ function Router() {
           
           <Route path="/privacy" component={Privacy} />
           <Route path="/terms" component={Terms} />
+          <Route path="/refund" component={Refund} />
           <Route path="/about" component={About} />
           <Route path="/support" component={Support} />
           

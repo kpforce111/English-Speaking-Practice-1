@@ -57,7 +57,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <Show when="signed-in"><Link href="/settings" onClick={close} className="flex items-center gap-4 rounded-2xl px-4 py-3 text-base font-bold hover:bg-secondary"><Settings size={20} /> {user?.firstName || 'Settings'}</Link></Show>
               <Show when="signed-out"><Link href="/sign-in" onClick={close} className="flex items-center gap-4 rounded-2xl px-4 py-3 text-base font-bold hover:bg-secondary"><LogIn size={20} /> Sign in to sync</Link></Show>
               {!isPremium && <Link href="/pricing" onClick={close} className="flex items-center justify-center gap-2 rounded-2xl bg-accent px-4 py-3.5 text-base font-bold text-accent-foreground shadow-sm"><Sparkles size={18} /> Start 2-Day Trial – ₹5</Link>}
-              <div className="flex gap-4 px-2 pt-2 text-sm font-semibold text-muted-foreground"><Link href="/about" onClick={close}>About</Link><Link href="/privacy" onClick={close}>Privacy</Link><Link href="/support" onClick={close}>Support</Link></div>
+              <div className="flex flex-wrap gap-x-4 gap-y-2 px-2 pt-2 text-sm font-semibold text-muted-foreground"><Link href="/about" onClick={close}>About</Link><Link href="/privacy" onClick={close}>Privacy</Link><Link href="/terms" onClick={close}>Terms</Link><Link href="/refund" onClick={close}>Refunds</Link><Link href="/support" onClick={close}>Support</Link></div>
             </div>
           </aside>
         </div>
