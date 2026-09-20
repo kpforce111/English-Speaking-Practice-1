@@ -83,7 +83,7 @@ export function Pricing() {
   const plans = (plansData as any)?.plans || [];
   const paymentOptions = (paymentOptionsData as any)?.options || [];
 
-  const trialText = (plansData as any)?.trial || "After your trial, you will be charged the monthly rate. Cancel anytime.";
+  const trialText = (plansData as any)?.trial || "Create your account for just ₹5 and get a 2-day free trial.";
 
   const subscription = subData as any;
   const isSubscribed = subscription && ['active', 'trialing', 'cancel_pending'].includes(subscription.status);
@@ -161,8 +161,8 @@ export function Pricing() {
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/20 text-accent-foreground mb-6">
           <Sparkles size={28} />
         </div>
-        <h1 className="font-serif text-4xl font-medium tracking-tight mb-4">Rllora Pro</h1>
-        <p className="text-muted-foreground max-w-md mx-auto">
+        <h1 className="text-[18px] md:text-[20px] font-semibold tracking-tight mb-4">Rllora Pro</h1>
+        <p className="text-[15px] leading-[1.6] text-muted-foreground max-w-md mx-auto">
           {trialText}
         </p>
       </div>
@@ -171,7 +171,7 @@ export function Pricing() {
         {/* Features & Plans */}
         <div className="flex flex-col gap-8">
           <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-            <h3 className="font-semibold text-lg mb-4">Select a plan</h3>
+            <h3 className="font-semibold text-[16px] mb-4">Select a plan</h3>
             <div className="space-y-3">
               {plans.map((plan: any) => (
                 <button
@@ -184,7 +184,7 @@ export function Pricing() {
                   }`}
                 >
                   {plan.bestValue && (
-                    <span className="absolute -top-3 left-4 rounded-full bg-accent px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-foreground shadow-sm">
+                    <span className="absolute -top-3 left-4 rounded-full bg-accent px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider text-accent-foreground shadow-sm">
                       Best Value
                     </span>
                   )}
@@ -194,7 +194,7 @@ export function Pricing() {
                     }`}>
                       {selectedPlan === plan.id && <Check size={12} />}
                     </div>
-                    <span className="font-medium text-left text-sm">{plan.label}</span>
+                    <span className="font-medium text-left text-[14px]">{plan.label}</span>
                   </div>
                 </button>
               ))}
@@ -202,14 +202,14 @@ export function Pricing() {
           </div>
 
           <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-            <h3 className="font-semibold text-lg mb-4">What's included</h3>
+            <h3 className="font-semibold text-[16px] mb-4">What's included</h3>
             <ul className="space-y-3">
               {FEATURES.map((feature, i) => (
-                <li key={i} className="flex items-start gap-3 text-sm">
-                  <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
-                    <Check size={10} strokeWidth={3} />
+                <li key={i} className="flex items-start gap-3 text-[14px] font-medium text-foreground">
+                  <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
+                    <Check size={12} strokeWidth={3} />
                   </div>
-                  <span className="text-muted-foreground">{feature}</span>
+                  <span>{feature}</span>
                 </li>
               ))}
             </ul>
@@ -225,26 +225,26 @@ export function Pricing() {
               </div>
             ) : isSubscribed ? (
               <div>
-                <h3 className="font-semibold text-lg mb-6">Manage Subscription</h3>
+                <h3 className="font-semibold text-[16px] mb-6">Manage Subscription</h3>
                 <div className="rounded-2xl bg-secondary/50 p-5 mb-6">
                   <div className="flex items-center justify-between mb-4 pb-4 border-b border-border">
-                    <span className="text-sm font-medium text-muted-foreground">Current Plan</span>
-                    <span className="font-semibold capitalize text-foreground">{subscription.plan || 'Premium'}</span>
+                    <span className="text-[14px] font-medium text-muted-foreground">Current Plan</span>
+                    <span className="font-semibold capitalize text-[14px] text-foreground">{subscription.plan || 'Premium'}</span>
                   </div>
                   <div className="flex items-center justify-between mb-4 pb-4 border-b border-border">
-                    <span className="text-sm font-medium text-muted-foreground">Status</span>
+                    <span className="text-[14px] font-medium text-muted-foreground">Status</span>
                     <div className="flex items-center gap-2">
                       <span className={`h-2 w-2 rounded-full ${subscription.cancelPending ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-                      <span className="font-medium text-sm text-foreground capitalize">
+                      <span className="font-medium text-[14px] text-foreground capitalize">
                         {subscription.cancelPending ? 'Cancels at Period End' : subscription.status}
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">
+                    <span className="text-[14px] font-medium text-muted-foreground">
                       {subscription.status === 'trialing' ? 'Trial Ends' : 'Renews On'}
                     </span>
-                    <span className="text-sm font-medium text-foreground">
+                    <span className="text-[14px] font-medium text-foreground">
                       {new Date(subscription.status === 'trialing' ? subscription.trialEndsAt : subscription.currentPeriodEndsAt).toLocaleDateString()}
                     </span>
                   </div>
@@ -252,18 +252,18 @@ export function Pricing() {
 
                 {subscription.cancelPending ? (
                   <div className="rounded-xl bg-amber-500/10 p-4 text-center">
-                    <p className="text-sm text-amber-700 font-medium">Your subscription is scheduled to cancel.</p>
-                    <p className="text-xs text-amber-600 mt-1">You will retain access until the current period ends.</p>
+                    <p className="text-[14px] text-amber-700 font-medium">Your subscription is scheduled to cancel.</p>
+                    <p className="text-[13px] text-amber-600 mt-1">You will retain access until the current period ends.</p>
                   </div>
                 ) : showCancelConfirm ? (
                   <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-5 animate-in slide-in-from-top-2">
-                    <h4 className="font-medium text-destructive mb-2">Cancel subscription?</h4>
-                    <p className="text-sm text-destructive/80 mb-4">
+                    <h4 className="font-medium text-[15px] text-destructive mb-2">Cancel subscription?</h4>
+                    <p className="text-[14px] text-destructive/80 mb-4">
                       Are you sure you want to cancel? You will keep premium access until the end of your current period.
                     </p>
                     
                     {error && (
-                      <div className="mb-4 flex items-start gap-2 rounded-xl bg-destructive/20 px-4 py-3 text-sm text-destructive">
+                      <div className="mb-4 flex items-start gap-2 rounded-xl bg-destructive/20 px-4 py-3 text-[14px] text-destructive">
                         <AlertCircle size={16} className="mt-0.5 shrink-0" />
                         <p>{error}</p>
                       </div>
@@ -273,14 +273,14 @@ export function Pricing() {
                       <button
                         onClick={() => setShowCancelConfirm(false)}
                         disabled={cancelSub.isPending}
-                        className="flex-1 rounded-xl bg-background px-4 py-2.5 text-sm font-medium text-foreground border border-border hover:bg-secondary transition-colors disabled:opacity-50"
+                        className="flex-1 rounded-xl bg-background px-4 py-2.5 text-[14px] font-medium text-foreground border border-border hover:bg-secondary transition-colors disabled:opacity-50"
                       >
                         Keep It
                       </button>
                       <button
                         onClick={handleCancel}
                         disabled={cancelSub.isPending}
-                        className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-destructive px-4 py-2.5 text-sm font-medium text-destructive-foreground shadow-sm hover:bg-destructive/90 transition-colors disabled:opacity-50"
+                        className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-destructive px-4 py-2.5 text-[14px] font-medium text-destructive-foreground shadow-sm hover:bg-destructive/90 transition-colors disabled:opacity-50"
                       >
                         {cancelSub.isPending ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />}
                         Confirm Cancel
@@ -290,7 +290,7 @@ export function Pricing() {
                 ) : (
                   <button
                     onClick={() => setShowCancelConfirm(true)}
-                    className="w-full rounded-xl border border-border bg-transparent px-4 py-3 text-sm font-medium text-destructive hover:bg-destructive/5 transition-colors"
+                    className="w-full rounded-xl border border-border bg-transparent px-4 py-3 text-[14px] font-medium text-destructive hover:bg-destructive/5 transition-colors"
                   >
                     Cancel Renewal
                   </button>
@@ -299,7 +299,7 @@ export function Pricing() {
             ) : (
               <>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-lg">Payment Method</h3>
+                  <h3 className="font-semibold text-[16px]">Payment Method</h3>
                   <div className="flex items-center gap-2 bg-secondary/50 rounded-lg px-3 py-1.5 border border-border">
                     <Globe size={14} className="text-muted-foreground" />
                     <select
@@ -308,7 +308,7 @@ export function Pricing() {
                         setSelectedCountry(e.target.value);
                         setSelectedProvider(null);
                       }}
-                      className="bg-transparent text-xs font-medium text-foreground outline-none cursor-pointer"
+                      className="bg-transparent text-[13px] font-medium text-foreground outline-none cursor-pointer"
                     >
                       <option value="IN">India</option>
                       <option value="AE">Gulf / Middle East</option>
@@ -339,9 +339,9 @@ export function Pricing() {
                             selectedProvider === opt.provider ? 'border-[4px] border-primary' : 'border-muted-foreground/40'
                           }`} />
                           <div className="text-left">
-                            <p className="font-medium text-sm">{opt.label}</p>
+                            <p className="font-medium text-[14px]">{opt.label}</p>
                             {!opt.available && (
-                              <p className="text-[10px] text-destructive mt-0.5">Currently unavailable</p>
+                              <p className="text-[11px] text-destructive mt-0.5">Currently unavailable</p>
                             )}
                           </div>
                         </div>
@@ -352,15 +352,15 @@ export function Pricing() {
 
                 <div className="border-t border-border pt-6">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">Today's total</span>
-                    <span className="font-serif text-2xl font-medium">₹5</span>
+                    <span className="text-[14px] font-medium text-muted-foreground">Today's total</span>
+                    <span className="font-semibold text-2xl">₹5</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mb-6">
-                    After your trial, you will be charged the monthly rate. Cancel anytime.
+                  <p className="text-[13px] text-muted-foreground mb-6">
+                    After your 2-day trial, you will be charged the monthly rate. Cancel anytime.
                   </p>
 
                   {error && (
-                    <div className="mb-6 flex items-start gap-2 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                    <div className="mb-6 flex items-start gap-2 rounded-xl bg-destructive/10 px-4 py-3 text-[14px] text-destructive">
                       <AlertCircle size={16} className="mt-0.5 shrink-0" />
                       <p>{error}</p>
                     </div>
@@ -369,14 +369,14 @@ export function Pricing() {
                   <button
                     onClick={handleCheckout}
                     disabled={checkout.isPending || !selectedProvider}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-4 text-sm font-semibold text-primary-foreground shadow-[0_4px_14px_hsl(var(--primary)/.25)] hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-4 text-[15px] font-medium text-primary-foreground shadow-[0_4px_14px_hsl(var(--primary)/.25)] hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {checkout.isPending && <Loader2 size={16} className="animate-spin" />}
-                    Start Trial for ₹5
+                    Start 2-Day Free Trial – ₹5
                   </button>
                   
-                  <div className="mt-4 flex items-center justify-center gap-1.5 text-xs text-muted-foreground/60">
-                    <ShieldCheck size={14} /> Secure, encrypted checkout
+                  <div className="mt-4 flex items-center justify-center gap-1.5 text-[13px] font-medium text-muted-foreground/60">
+                    <ShieldCheck size={16} /> Secure, encrypted checkout
                   </div>
                 </div>
               </>
