@@ -89,6 +89,7 @@ export function Pricing() {
 
   const plans = (plansData as any)?.plans || [];
   const paymentOptions = (paymentOptionsData as any)?.options || [];
+  const paymentNote = (paymentOptionsData as any)?.note || '';
 
   const trialText = (plansData as any)?.trial || "Start with 2 days of full access to both learning boxes. No trial charge.";
 
@@ -361,15 +362,22 @@ export function Pricing() {
                   </div>
                 ) : (
                   <div className="space-y-3 mb-8">
+                    {paymentOptions.length === 0 && (
+                      <div className="rounded-2xl border border-border bg-muted/40 p-4 text-[13px] leading-relaxed text-muted-foreground">
+                        {paymentNote || 'Payments are temporarily unavailable.'}
+                      </div>
+                    )}
                     {paymentOptions.map((opt: any) => (
                       <button
                         key={opt.id}
-                        onClick={() => setSelectedProvider(opt.provider)}
+                        type="button"
+                        disabled={!opt.available}
+                        onClick={() => opt.available && setSelectedProvider(opt.provider)}
                         className={`flex w-full items-center justify-between rounded-2xl border p-4 transition-all ${
                           selectedProvider === opt.provider 
                             ? 'border-primary bg-primary/5' 
                             : 'border-border bg-transparent hover:bg-muted/50'
-                        }`}
+                        } disabled:cursor-not-allowed disabled:opacity-60`}
                       >
                         <div className="flex items-center gap-3">
                           <div className={`h-4 w-4 shrink-0 rounded-full border ${
@@ -415,7 +423,7 @@ export function Pricing() {
                   </button>
                   
                   <div className="mt-4 flex items-center justify-center gap-1.5 text-[13px] font-medium text-muted-foreground/60">
-                    <ShieldCheck size={16} /> Secure, encrypted checkout
+                    <ShieldCheck size={16} /> {paymentOptions.some((option: any) => option.available) ? 'Secure, encrypted checkout' : 'Checkout will open after PhonePe approval'}
                   </div>
                 </div>
               </>

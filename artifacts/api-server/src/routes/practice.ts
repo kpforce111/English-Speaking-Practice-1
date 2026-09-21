@@ -33,6 +33,11 @@ const plans = {
   yearly: { amountPaise: 299900, label: "Yearly: ₹2,999 / 12 months (Save 37%, Best Value) — cancel anytime." },
 } as const;
 
+function activePaymentGateway() {
+  const gateway = String(process.env.PAYMENT_GATEWAY || "inactive").trim().toLowerCase();
+  return gateway === "stripe" || gateway === "phonepe" ? gateway : "inactive";
+}
+
 function requiredEnv(...keys: string[]) {
   return keys.filter((key) => !process.env[key]);
 }
@@ -411,26 +416,58 @@ router.get("/plans", (_req, res) => res.json({
 
 router.get("/payment-options", (req, res) => {
   const country = String(req.query.country || "").toUpperCase();
+  const gateway = activePaymentGateway();
+  if (gateway === "inactive") {
+    res.json({
+      country,
+      gateway,
+      options: [],
+      note: "Payments are temporarily unavailable while PhonePe approval is pending.",
+    });
+    return;
+  }
+  if (gateway === "phonepe") {
+    res.json({
+      country,
+      gateway,
+      options: [{ id: "phonepe", provider: "phonepe", label: "PhonePe", available: false }],
+      note: "PhonePe payments will be enabled after merchant approval and integration.",
+    });
+    return;
+  }
   const stripeReady = Object.keys(learningBoxes).every((boxId) =>
     Object.keys(plans).every((planId) => process.env[`STRIPE_PRICE_${boxId.toUpperCase()}_${planId.toUpperCase()}`]),
   );
-  const razorReady = Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET)
-    && Object.keys(learningBoxes).every((boxId) =>
-      Object.keys(plans).every((planId) => process.env[`RAZORPAY_PLAN_${boxId.toUpperCase()}_${planId.toUpperCase()}`]),
-    );
-  const options = country === "IN"
-    ? [{ id: "stripe-card", provider: "stripe", label: "Card (Visa/Mastercard)", available: stripeReady }, { id: "razorpay-upi", provider: "razorpay", label: "UPI Autopay", available: razorReady }]
-    : [{ id: "stripe-card", provider: "stripe", label: "Card (Visa/Mastercard)", available: stripeReady }, { id: "razorpay-upi", provider: "razorpay", label: "UPI Autopay (if supported by your bank)", available: razorReady }];
-  res.json({ country, options, note: "UPI Autopay availability depends on the user's bank and Razorpay account." });
+  res.json({
+    country,
+    gateway,
+    options: [{ id: "stripe-card", provider: "stripe", label: "Card (test mode)", available: stripeReady }],
+    note: stripeReady
+      ? "Stripe is available only because PAYMENT_GATEWAY=stripe was explicitly selected."
+      : "Stripe test mode is selected but its price configuration is incomplete.",
+  });
 });
 
 router.post("/checkout", async (req, res) => {
   if (!authenticatedClerkUserId(req)) { res.status(401).json({ error: "Sign in before starting Premium checkout.", code: "SIGN_IN_REQUIRED" }); return; }
   const userId = await getUserId(req, res);
   const { provider, plan = "monthly", country = "IN" } = req.body || {};
+  const gateway = activePaymentGateway();
   const boxId = parseLearningBoxId(req.body?.boxId);
   if (!boxId) { res.status(400).json({ error: "boxId must be read_write or audio_first" }); return; }
   if (!plans[plan as keyof typeof plans]) { res.status(400).json({ error: "plan must be monthly, quarterly, or yearly" }); return; }
+  if (gateway === "inactive") {
+    res.status(503).json({ error: "Payments are temporarily unavailable while PhonePe approval is pending.", code: "PAYMENTS_INACTIVE" });
+    return;
+  }
+  if (gateway === "phonepe") {
+    res.status(503).json({ error: "PhonePe approval is still pending. Payments are not live yet.", code: "PHONEPE_PENDING" });
+    return;
+  }
+  if (provider !== gateway) {
+    res.status(400).json({ error: `The active payment gateway is ${gateway}.`, code: "PAYMENT_PROVIDER_INACTIVE" });
+    return;
+  }
   const existingRow = (await pool.query("SELECT * FROM box_subscriptions WHERE user_id = $1 AND box_id = $2", [userId, boxId])).rows[0];
   const existingEntitlement = existingRow ? effectiveBoxStatus(existingRow) : null;
   if (existingEntitlement?.effectiveStatus === "pending_payment") {
