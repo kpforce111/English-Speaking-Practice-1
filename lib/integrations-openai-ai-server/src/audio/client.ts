@@ -170,14 +170,14 @@ export async function voiceChatStream(
   })();
 }
 
-/** Text-to-Speech using gpt-audio. */
+/** Cost-efficient text-to-speech using gpt-audio-mini. */
 export async function textToSpeech(
   text: string,
   voice: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer" = "alloy",
   format: "wav" | "mp3" | "flac" | "opus" | "pcm16" = "wav"
 ): Promise<Buffer> {
   const response = await openai.chat.completions.create({
-    model: "gpt-audio",
+    model: "gpt-audio-mini",
     modalities: ["text", "audio"],
     audio: { voice, format },
     messages: [
@@ -189,13 +189,13 @@ export async function textToSpeech(
   return Buffer.from(audioData, "base64");
 }
 
-/** Streaming Text-to-Speech. */
+/** Cost-efficient streaming text-to-speech. */
 export async function textToSpeechStream(
   text: string,
   voice: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer" = "alloy"
 ): Promise<AsyncIterable<string>> {
   const stream = await openai.chat.completions.create({
-    model: "gpt-audio",
+    model: "gpt-audio-mini",
     modalities: ["text", "audio"],
     audio: { voice, format: "pcm16" },
     messages: [

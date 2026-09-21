@@ -5,11 +5,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Router, type IRouter } from "express";
 import { clerkClient } from "@clerk/express";
-import Anthropic from "@anthropic-ai/sdk";
 import { ReplitConnectors } from "@replit/connectors-sdk";
 import { authenticatedClerkUserId, getUserId, entitlement, requirePremium, words, recordEvent, reserveVoice, releaseVoice } from "../lib/session";
 import { pool } from "@workspace/db";
-import { ensureCompatibleFormat, speechToText } from "@workspace/integrations-openai-ai-server/audio";
+import { ensureCompatibleFormat, speechToText, textToSpeech } from "@workspace/integrations-openai-ai-server/audio";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import Stripe from "stripe";
 import { publicAppUrl } from "../lib/publicAppUrl";
@@ -62,17 +61,19 @@ async function decodedAudio(audioBase64: unknown, mimeType: unknown) {
 async function voiceModel(input: Buffer, format: "wav" | "mp3", history: Array<{ role: "user" | "assistant"; content: string }>) {
   const userTranscript = await speechToText(input, format);
   const response = await openai.chat.completions.create({
-    model: "gpt-audio",
-    modalities: ["text", "audio"],
-    audio: { voice: "alloy", format: "mp3" },
+    model: "gpt-4o-mini",
+    max_tokens: 220,
     messages: [
       { role: "system", content: "You are Rllora, a warm English teacher. Keep replies under 100 words, correct one important mistake gently, and explain briefly in Roman Hindi or Urdu when helpful. Speak naturally and encourage the learner." },
       ...history.slice(-8),
       { role: "user", content: userTranscript },
     ],
   });
-  const message = response.choices[0]?.message as any;
-  return { userTranscript, assistantTranscript: String(message?.audio?.transcript || message?.content || "").trim(), audioResponse: Buffer.from(message?.audio?.data || "", "base64") };
+  const assistantTranscript = response.choices[0]?.message?.content?.trim();
+  if (!assistantTranscript) throw new Error("Voice reply model returned no text");
+  const audioResponse = await textToSpeech(assistantTranscript, "alloy", "mp3");
+  if (!audioResponse.length) throw new Error("Speech model returned no audio");
+  return { userTranscript, assistantTranscript, audioResponse };
 }
 
 async function usage(userId: string) {
@@ -81,21 +82,18 @@ async function usage(userId: string) {
   return { date, row: (await pool.query("SELECT * FROM daily_usage WHERE user_id = $1 AND usage_date = $2", [userId, date])).rows[0] };
 }
 
-function aiClient() {
-  const key = process.env.ANTHROPIC_API_KEY;
-  return key ? new Anthropic({ apiKey: key }) : null;
-}
-
 async function translateOrCorrect(instruction: string, content: string) {
-  const client = aiClient();
-  if (!client) throw new Error("AI provider is not configured");
-  const result = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 1000,
-    system: "You are an English teacher for Indian learners. Understand English, Hindi, Urdu, and Roman Hindi/Urdu. Return concise valid JSON only.",
-    messages: [{ role: "user", content: `${instruction}\nText: ${content}` }],
+  if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) throw new Error("AI provider is not configured");
+  const result = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    max_tokens: 500,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: "You are an English teacher for Indian learners. Understand English, Hindi, Urdu, and Roman Hindi/Urdu. Return concise valid JSON only." },
+      { role: "user", content: `${instruction}\nText: ${content}` },
+    ],
   });
-  const text = result.content.find((block): block is Anthropic.TextBlock => block.type === "text")?.text || "{}";
+  const text = result.choices[0]?.message?.content || "{}";
   try { return JSON.parse(text.replace(/^```json\s*|\s*```$/g, "")); } catch { return { text }; }
 }
 

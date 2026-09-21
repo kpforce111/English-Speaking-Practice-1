@@ -130,7 +130,7 @@ router.get("/admin/overview", requireOwner, async (_req, res) => {
       billingEvents30Days: events.rows[0].count,
     },
     services: {
-      aiChat: Boolean(process.env.ANTHROPIC_API_KEY),
+      aiChat: Boolean(process.env.AI_INTEGRATIONS_OPENAI_API_KEY),
       voiceAi: Boolean(process.env.AI_INTEGRATIONS_OPENAI_API_KEY),
       pronunciation: Boolean(process.env.RAPIDAPI_KEY && process.env.RAPIDAPI_LANGUAGE_CONFIDENCE_URL),
       stripe: Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_WEBHOOK_SECRET),

@@ -1,9 +1,9 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { Router, type IRouter } from "express";
 import {
   SendChatMessageBody,
   SendChatMessageResponse,
 } from "@workspace/api-zod";
+import { openai } from "@workspace/integrations-openai-ai-server";
 import { getUserId, recordEvent, releaseText, reserveText, textAllowance, words, entitlement } from "../lib/session";
 
 const router: IRouter = Router();
@@ -28,9 +28,8 @@ router.post("/chat", async (req, res): Promise<void> => {
     return;
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    req.log.error("ANTHROPIC_API_KEY is not configured");
+  if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
+    req.log.error("OpenAI AI integration is not configured");
     res.status(500).json({ error: "The AI practice partner is not configured yet." });
     return;
   }
@@ -49,27 +48,24 @@ router.post("/chat", async (req, res): Promise<void> => {
     res.status(429).json({ error: `You've reached your ${allowance.limit}-message daily text limit. Upgrade to Premium for more practice.`, code: "TEXT_LIMIT" });
     return;
   }
-  const client = new Anthropic({ apiKey });
   const context = [
     ...history,
     { role: "user" as const, content: message },
   ];
 
   try {
-    const completion = await client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 8192,
-      system: practicePartnerInstructions,
-      messages: context,
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_tokens: 250,
+      messages: [
+        { role: "system", content: practicePartnerInstructions },
+        ...context,
+      ],
     });
-
-    const firstTextBlock = completion.content.find(
-      (block): block is Anthropic.TextBlock => block.type === "text",
-    );
-    const reply = firstTextBlock?.text?.trim();
+    const reply = completion.choices[0]?.message?.content?.trim();
 
     if (!reply) {
-      req.log.error("Anthropic returned no text content");
+      req.log.error("OpenAI returned no text content");
       res.status(500).json({ error: "The AI practice partner returned an empty reply." });
       return;
     }
@@ -79,17 +75,7 @@ router.post("/chat", async (req, res): Promise<void> => {
     res.json({ reply: cappedReply, correction: { available: currentPlan.effectivePlan !== "free", note: currentPlan.effectivePlan === "free" ? "Premium unlocks immediate Roman Hindi/Urdu corrections." : undefined } });
   } catch (error) {
     await releaseText(userId, reservation.date);
-    req.log.error({ error }, "Anthropic chat request failed");
-    if (
-      error instanceof Error &&
-      error.message.toLowerCase().includes("credit balance")
-    ) {
-      res.status(402).json({
-        error:
-          "Your Anthropic account needs more credits before Rllora AI can reply. Add credits to the account behind ANTHROPIC_API_KEY, then try again.",
-      });
-      return;
-    }
+    req.log.error({ error }, "OpenAI chat request failed");
     res.status(500).json({ error: "I couldn't reach your practice partner. Please try again." });
   }
 });
