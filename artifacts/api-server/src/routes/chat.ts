@@ -3,8 +3,8 @@ import {
   SendChatMessageBody,
   SendChatMessageResponse,
 } from "@workspace/api-zod";
-import { openai } from "@workspace/integrations-openai-ai-server";
 import { getUserId, recordEvent, releaseText, reserveText, textAllowance, words, entitlement } from "../lib/session";
+import { compactLearningContext, routeAiText } from "../lib/aiRouter";
 
 const router: IRouter = Router();
 
@@ -49,26 +49,20 @@ router.post("/chat", async (req, res): Promise<void> => {
     return;
   }
   const context = [
-    ...history,
+    ...compactLearningContext(history),
     { role: "user" as const, content: message },
   ];
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      max_tokens: 250,
+    const reply = await routeAiText({
+      task: "conversation",
+      input: message,
+      maxCompletionTokens: 250,
       messages: [
         { role: "system", content: practicePartnerInstructions },
         ...context,
       ],
     });
-    const reply = completion.choices[0]?.message?.content?.trim();
-
-    if (!reply) {
-      req.log.error("OpenAI returned no text content");
-      res.status(500).json({ error: "The AI practice partner returned an empty reply." });
-      return;
-    }
 
     const cappedReply = words(reply) > 100 ? reply.split(/\s+/).slice(0, 100).join(" ") : reply;
     await recordEvent(userId, "chat", message, { reply });

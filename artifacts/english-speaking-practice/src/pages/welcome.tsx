@@ -1,4 +1,4 @@
-import { BarChart2, GraduationCap, Languages, MessageCircle, Mic, Sparkles, Users } from 'lucide-react';
+import { ArrowRight, Mic, Sparkles } from 'lucide-react';
 import { Link } from 'wouter';
 import { useListPremiumPlans } from '@workspace/api-client-react';
 
@@ -6,15 +6,6 @@ const fallbackPlans = [
   { id: 'monthly', label: 'Monthly', price: '₹399', detail: 'per month' },
   { id: 'quarterly', label: 'Quarterly', price: '₹999', detail: 'every 3 months · Save 17%' },
   { id: 'yearly', label: 'Yearly', price: '₹2,999', detail: 'every 12 months · Save 37%' },
-];
-
-const features = [
-  { href: '/chat', label: 'Chat', description: 'Talk with Mira', icon: MessageCircle },
-  { href: '/voice', label: 'Voice', description: 'Speak naturally', icon: Mic },
-  { href: '/translate', label: 'Translate', description: 'Understand clearly', icon: Languages },
-  { href: '/roleplays', label: 'Roleplays', description: 'Practice real life', icon: Users },
-  { href: '/lessons', label: 'Lessons', description: 'Build every day', icon: GraduationCap },
-  { href: '/progress', label: 'Progress', description: 'See your growth', icon: BarChart2 },
 ];
 
 function planInfo(plan: { id: string; label?: string }) {
@@ -40,17 +31,14 @@ export function Welcome() {
             </Link>
           </div>
 
-          <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-5">
-            {features.map(({ href, label, description, icon: Icon }) => (
-              <Link key={href} href={href} className="flex min-h-44 flex-col items-center justify-center rounded-3xl border border-border bg-background p-5 text-center shadow-sm transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-md">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
-                  <Icon size={31} strokeWidth={2.5} />
-                </div>
-                <h2 className="mt-4 text-xl font-extrabold md:text-2xl">{label}</h2>
-                <p className="mt-1 text-base font-semibold text-muted-foreground md:text-lg">{description}</p>
-              </Link>
-            ))}
-          </div>
+          <Link href="/voice" className="mx-auto mt-10 flex min-h-52 w-full max-w-2xl flex-col items-center justify-center rounded-3xl border border-primary/20 bg-background p-6 text-center shadow-md transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+              <Mic size={31} strokeWidth={2.5} />
+            </div>
+            <h2 className="mt-4 text-xl font-extrabold md:text-2xl">Start speaking practice</h2>
+            <p className="mt-1 text-base font-semibold text-muted-foreground md:text-lg">Speak → Correct → Repeat</p>
+            <span className="mt-5 inline-flex items-center gap-2 font-bold text-primary">Start now <ArrowRight size={18} /></span>
+          </Link>
 
           <div className="mt-10 border-t border-border pt-8">
             <div className="mb-5"><h2 className="text-2xl font-bold">Choose what happens after your trial</h2><p className="mt-2 text-lg font-medium text-muted-foreground">Your ₹5 trial gives you Premium access for two days. If you continue, select the plan that fits you best.</p></div>

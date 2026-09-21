@@ -81,7 +81,7 @@ export function Chat() {
     const trimmed = message.trim();
     if (!trimmed || sendChatMessage.isPending) return;
     setError(null);
-    const historyForRequest = isRetry ? messages.slice(0, -1) : messages;
+    const historyForRequest = (isRetry ? messages.slice(0, -1) : messages).slice(-8);
     const nextMessages = isRetry
       ? messages
       : [...messages, { role: 'user', content: trimmed } satisfies ChatMessage];

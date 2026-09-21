@@ -1,6 +1,6 @@
 # English Speaking Practice
 
-A mobile-friendly conversational English practice app powered by a friendly Claude speaking partner.
+A mobile-friendly conversational English practice app powered by a cost-optimized, server-routed AI speaking partner.
 
 ## Run & Operate
 
@@ -24,13 +24,15 @@ A mobile-friendly conversational English practice app powered by a friendly Clau
 
 - `artifacts/english-speaking-practice/src/App.tsx` — chat experience, session persistence, and client interaction state
 - `artifacts/english-speaking-practice/src/index.css` — purple/lavender visual theme and motion system
-- `artifacts/api-server/src/routes/chat.ts` — validated Claude conversation endpoint
+- `artifacts/api-server/src/lib/aiRouter.ts` — configurable primary/secondary model routing and compact learning context
+- `artifacts/api-server/src/routes/chat.ts` — validated AI conversation endpoint
 - `lib/api-spec/openapi.yaml` — source of truth for the chat API contract
 
 ## Architecture decisions
 
-- The browser stores the current conversation in localStorage so the AI can receive session context without requiring accounts or a database.
-- The Anthropic API key stays server-side in `ANTHROPIC_API_KEY`; the browser only calls the local `/api/chat` endpoint.
+- The browser stores the current conversation in localStorage, while the backend sends only a compact recent learning context to the model.
+- Provider credentials and model selection stay server-side; the browser only calls backend API routes.
+- `AI_PRIMARY_MODEL` selects the cheap/fast default model and `AI_SECONDARY_MODEL` selects the complex-request/fallback model.
 - The practice partner receives a concise system prompt that handles natural grammar rephrasing and Hindi/English bilingual replies.
 
 ## Product
@@ -44,6 +46,8 @@ Users can start with a prompt or type freely, see short AI replies with a typing
 ## Gotchas
 
 - Keep the API contract and generated clients synchronized by running the API codegen command after OpenAPI changes.
+- This is an artifact-mode PNPM workspace. Production build, run, routing, and health-check settings belong in each artifact's `.replit-artifact/artifact.toml`, updated through the artifact validation workflow—not in `.replit`.
+- Never append, concatenate, or partially regenerate `.replit`. If its workspace-level settings must change, make one atomic replacement and run `pnpm run validate:replit`; duplicated TOML tables prevent Replit from loading the project.
 
 ## Pointers
 

@@ -9,9 +9,9 @@ import { ReplitConnectors } from "@replit/connectors-sdk";
 import { authenticatedClerkUserId, getUserId, entitlement, requirePremium, words, recordEvent, reserveVoice, releaseVoice } from "../lib/session";
 import { pool } from "@workspace/db";
 import { ensureCompatibleFormat, speechToText, textToSpeech } from "@workspace/integrations-openai-ai-server/audio";
-import { openai } from "@workspace/integrations-openai-ai-server";
 import Stripe from "stripe";
 import { publicAppUrl } from "../lib/publicAppUrl";
+import { compactLearningContext, routeAiText } from "../lib/aiRouter";
 
 const router: IRouter = Router();
 const connectors = new ReplitConnectors();
@@ -60,17 +60,16 @@ async function decodedAudio(audioBase64: unknown, mimeType: unknown) {
 
 async function voiceModel(input: Buffer, format: "wav" | "mp3", history: Array<{ role: "user" | "assistant"; content: string }>) {
   const userTranscript = await speechToText(input, format);
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    max_tokens: 220,
+  const assistantTranscript = await routeAiText({
+    task: "voice",
+    input: userTranscript,
+    maxCompletionTokens: 220,
     messages: [
       { role: "system", content: "You are Rllora, a warm English teacher. Keep replies under 100 words, correct one important mistake gently, and explain briefly in Roman Hindi or Urdu when helpful. Speak naturally and encourage the learner." },
-      ...history.slice(-8),
+      ...compactLearningContext(history),
       { role: "user", content: userTranscript },
     ],
   });
-  const assistantTranscript = response.choices[0]?.message?.content?.trim();
-  if (!assistantTranscript) throw new Error("Voice reply model returned no text");
   const audioResponse = await textToSpeech(assistantTranscript, "alloy", "mp3");
   if (!audioResponse.length) throw new Error("Speech model returned no audio");
   return { userTranscript, assistantTranscript, audioResponse };
@@ -84,16 +83,16 @@ async function usage(userId: string) {
 
 async function translateOrCorrect(instruction: string, content: string) {
   if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) throw new Error("AI provider is not configured");
-  const result = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    max_tokens: 500,
-    response_format: { type: "json_object" },
+  const text = await routeAiText({
+    task: /translat/i.test(instruction) ? "translation" : "correction",
+    input: content,
+    maxCompletionTokens: 500,
+    json: true,
     messages: [
       { role: "system", content: "You are an English teacher for Indian learners. Understand English, Hindi, Urdu, and Roman Hindi/Urdu. Return concise valid JSON only." },
       { role: "user", content: `${instruction}\nText: ${content}` },
     ],
   });
-  const text = result.choices[0]?.message?.content || "{}";
   try { return JSON.parse(text.replace(/^```json\s*|\s*```$/g, "")); } catch { return { text }; }
 }
 
