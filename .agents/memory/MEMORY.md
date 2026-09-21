@@ -1,3 +1,4 @@
 - [RapidAPI pronunciation routing](rapidapi-pronunciation-routing.md) — keep the direct-key path; this API’s generic connector proxy failed before reaching upstream.
 - [.replit deployment safety](dot-replit-deployment-safety.md) — artifact deployment belongs in validated artifact manifests; never append or register ad-hoc workflows in `.replit`.
 - [Stripe connector billing sync](stripe-connector-billing-sync.md) — Stripe is connector-backed; reconcile billing on authenticated reads instead of requiring a direct API key or webhook.
+- [Vite publish-build environment](vite-publish-build-environment.md) — root pre-builds lack artifact service env; Vite configs must not require PORT or BASE_PATH during build.
