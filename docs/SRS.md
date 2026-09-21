@@ -29,6 +29,7 @@
 - `box_subscriptions` uses `(user_id, box_id)` as its primary key.
 - Checkout requests require a box ID, provider, and billing period.
 - Stripe and Razorpay metadata include the box ID and webhooks verify ownership against the matching user-and-box row.
+- Stripe API calls use the connected Replit Stripe account; authenticated session/subscription reads reconcile pending and active Stripe records directly, so access remains current even without a webhook secret.
 - Provider price identifiers are separate per box and period.
 - The shared 2-day free trial creates trial access for both boxes once per user.
 - Paid access, renewal, and cancellation remain independent for each box.

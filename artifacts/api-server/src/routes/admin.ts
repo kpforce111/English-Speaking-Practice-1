@@ -134,7 +134,14 @@ router.get("/admin/overview", requireOwner, async (_req, res) => {
       aiChat: Boolean(process.env.AI_INTEGRATIONS_OPENAI_API_KEY),
       voiceAi: Boolean(process.env.AI_INTEGRATIONS_OPENAI_API_KEY),
       pronunciation: Boolean(process.env.RAPIDAPI_KEY && process.env.RAPIDAPI_LANGUAGE_CONFIDENCE_URL),
-      stripe: Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_WEBHOOK_SECRET),
+      stripe: [
+        "STRIPE_PRICE_READ_WRITE_MONTHLY",
+        "STRIPE_PRICE_READ_WRITE_QUARTERLY",
+        "STRIPE_PRICE_READ_WRITE_YEARLY",
+        "STRIPE_PRICE_AUDIO_FIRST_MONTHLY",
+        "STRIPE_PRICE_AUDIO_FIRST_QUARTERLY",
+        "STRIPE_PRICE_AUDIO_FIRST_YEARLY",
+      ].every((key) => Boolean(process.env[key])),
       razorpay: Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET && process.env.RAZORPAY_WEBHOOK_SECRET),
     },
   });

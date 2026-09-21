@@ -20,6 +20,8 @@ import {
   parseLearningBoxId,
   sharedTrialState,
 } from "../lib/boxSubscriptions";
+import { syncStripeBilling } from "../lib/stripeBilling";
+import { stripeConnectorRequest } from "../lib/stripeConnector";
 
 const router: IRouter = Router();
 const connectors = new ReplitConnectors();
@@ -33,11 +35,6 @@ const plans = {
 
 function requiredEnv(...keys: string[]) {
   return keys.filter((key) => !process.env[key]);
-}
-
-function stripeClient() {
-  const key = process.env.STRIPE_SECRET_KEY;
-  return key ? new Stripe(key) : null;
 }
 
 const audioTypes = new Set(["audio/webm", "audio/mp4", "audio/mpeg", "audio/ogg", "audio/wav", "audio/x-wav"]);
@@ -107,6 +104,9 @@ async function translateOrCorrect(instruction: string, content: string) {
 router.get("/session", async (req, res) => {
   const userId = await getUserId(req, res);
   const signedIn = Boolean(authenticatedClerkUserId(req));
+  if (signedIn) {
+    try { await syncStripeBilling(userId); } catch (error) { req.log.warn({ error }, "Stripe billing sync failed during session read"); }
+  }
   const current = await entitlement(userId);
   const today = await usage(userId);
   res.json({ userId, signedIn, plan: current.effectivePlan, status: current.effectiveStatus, providerStatus: current.status, usage: { textMessages: today.row.text_messages, voiceSeconds: today.row.voice_seconds }, limits: { freeTextMessages: 10, premiumTextMessages: 100, freeWords: 50, premiumVoiceSeconds: 900 } });
@@ -160,6 +160,7 @@ router.delete("/account", async (req, res) => {
 
 router.get("/subscription", async (req, res) => {
   const userId = await getUserId(req, res);
+  try { await syncStripeBilling(userId); } catch (error) { req.log.warn({ error }, "Stripe billing sync failed during subscription read"); }
   const rows = await pool.query("SELECT * FROM box_subscriptions WHERE user_id = $1 ORDER BY box_id", [userId]);
   const subscriptions = rows.rows.map((row) => {
     const effective = effectiveBoxStatus(row);
@@ -202,13 +203,13 @@ router.post("/subscription/cancel", async (req, res) => {
   }
   try {
     if (current.provider === "stripe") {
-      const missing = requiredEnv("STRIPE_SECRET_KEY");
-      if (missing.length) { res.status(503).json({ error: `Stripe is not configured. Missing: ${missing.join(", ")}`, code: "STRIPE_NOT_CONFIGURED", missing }); return; }
-      const stripe = stripeClient();
-      if (!stripe) { res.status(503).json({ error: "Stripe is not configured.", code: "STRIPE_NOT_CONFIGURED" }); return; }
-      const subscription = await stripe.subscriptions.update(String(current.provider_subscription_id), { cancel_at_period_end: true });
-      const end = subscription.cancel_at
-        ? new Date(subscription.cancel_at * 1000).toISOString()
+      const subscription = await stripeConnectorRequest<Record<string, any>>(
+        `/v1/subscriptions/${encodeURIComponent(String(current.provider_subscription_id))}`,
+        { method: "POST", form: { cancel_at_period_end: "true" } },
+      );
+      const periodEnd = subscription.cancel_at || subscription.current_period_end || subscription.items?.data?.[0]?.current_period_end;
+      const end = periodEnd
+        ? new Date(Number(periodEnd) * 1000).toISOString()
         : current.current_period_ends_at || current.trial_ends_at || null;
       await pool.query("UPDATE box_subscriptions SET status = 'cancel_pending', current_period_ends_at = COALESCE($1, current_period_ends_at) WHERE user_id = $2 AND box_id = $3", [end, userId, boxId]);
       res.json({ provider: "stripe", status: "cancel_pending", cancelAtPeriodEnd: true, accessUntil: end });
@@ -410,9 +411,16 @@ router.get("/plans", (_req, res) => res.json({
 
 router.get("/payment-options", (req, res) => {
   const country = String(req.query.country || "").toUpperCase();
+  const stripeReady = Object.keys(learningBoxes).every((boxId) =>
+    Object.keys(plans).every((planId) => process.env[`STRIPE_PRICE_${boxId.toUpperCase()}_${planId.toUpperCase()}`]),
+  );
+  const razorReady = Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET)
+    && Object.keys(learningBoxes).every((boxId) =>
+      Object.keys(plans).every((planId) => process.env[`RAZORPAY_PLAN_${boxId.toUpperCase()}_${planId.toUpperCase()}`]),
+    );
   const options = country === "IN"
-    ? [{ id: "razorpay-upi", provider: "razorpay", label: "UPI Autopay", available: Boolean(process.env.RAZORPAY_KEY_ID) }]
-    : [{ id: "stripe-card", provider: "stripe", label: "Card (Visa/Mastercard)", available: Boolean(process.env.STRIPE_SECRET_KEY) }, { id: "razorpay-upi", provider: "razorpay", label: "UPI Autopay (if supported by your bank)", available: Boolean(process.env.RAZORPAY_KEY_ID) }];
+    ? [{ id: "stripe-card", provider: "stripe", label: "Card (Visa/Mastercard)", available: stripeReady }, { id: "razorpay-upi", provider: "razorpay", label: "UPI Autopay", available: razorReady }]
+    : [{ id: "stripe-card", provider: "stripe", label: "Card (Visa/Mastercard)", available: stripeReady }, { id: "razorpay-upi", provider: "razorpay", label: "UPI Autopay (if supported by your bank)", available: razorReady }];
   res.json({ country, options, note: "UPI Autopay availability depends on the user's bank and Razorpay account." });
 });
 
@@ -469,31 +477,33 @@ router.post("/checkout", async (req, res) => {
   }
   if (provider === "stripe") {
     const priceKey = `STRIPE_PRICE_${boxEnvSegment(boxId)}_${String(plan).toUpperCase()}`;
-    const missing = requiredEnv("STRIPE_SECRET_KEY", priceKey);
+    const missing = requiredEnv(priceKey);
     if (missing.length) { res.status(503).json({ error: `Stripe is not configured. Missing: ${missing.join(", ")}`, code: "STRIPE_NOT_CONFIGURED", missing }); return; }
-    const stripe = stripeClient();
-    if (!stripe) { res.status(503).json({ error: "Stripe is not configured.", code: "STRIPE_NOT_CONFIGURED" }); return; }
     const origin = publicAppUrl();
-    const session = await stripe.checkout.sessions.create({
+    const checkoutForm: Record<string, string> = {
       mode: "subscription",
-      line_items: [{ price: process.env[priceKey]!, quantity: 1 }],
-      subscription_data: {
-        ...(proposedTrialEnds
-          ? (grantsSharedTrial
-            ? { trial_period_days: 2 }
-            : { trial_end: Math.floor(proposedTrialEnds.getTime() / 1000) })
-          : {}),
-        metadata: { userId, plan, boxId },
-      },
-      metadata: { userId, plan, boxId, grantsSharedTrial: grantsSharedTrial ? "true" : "false" },
-      success_url: `${origin}/pricing?checkout=success&box=${boxId}`,
+      "line_items[0][price]": process.env[priceKey]!,
+      "line_items[0][quantity]": "1",
+      "subscription_data[metadata][userId]": userId,
+      "subscription_data[metadata][plan]": plan,
+      "subscription_data[metadata][boxId]": boxId,
+      "metadata[userId]": userId,
+      "metadata[plan]": plan,
+      "metadata[boxId]": boxId,
+      "metadata[grantsSharedTrial]": grantsSharedTrial ? "true" : "false",
+      success_url: `${origin}/pricing?checkout=success&box=${boxId}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/pricing?checkout=cancelled&box=${boxId}`,
-      customer_creation: "always",
-      allow_promotion_codes: true,
-    });
-    if (typeof session.customer === "string") {
-      await pool.query("UPDATE users SET stripe_customer_id = $1 WHERE id = $2", [session.customer, userId]);
+      allow_promotion_codes: "true",
+    };
+    if (proposedTrialEnds) {
+      checkoutForm[grantsSharedTrial ? "subscription_data[trial_period_days]" : "subscription_data[trial_end]"] = grantsSharedTrial
+        ? "2"
+        : String(Math.floor(proposedTrialEnds.getTime() / 1000));
     }
+    const session = await stripeConnectorRequest<Record<string, any>>("/v1/checkout/sessions", {
+      method: "POST",
+      form: checkoutForm,
+    });
     await pool.query(
       `INSERT INTO box_subscriptions (user_id, box_id, plan, provider, selected_plan, pending_payment_id, provider_subscription_id, status, trial_ends_at)
        VALUES ($1, $2, 'free', 'stripe', $3, $4, NULL, 'pending_payment', $5)
@@ -514,10 +524,10 @@ router.post("/webhooks/:provider", async (req, res) => {
   const raw = (req as typeof req & { rawBody?: Buffer }).rawBody;
   if (!raw) { res.status(400).json({ error: "Raw webhook body is required." }); return; }
   if (provider === "stripe") {
-    const missing = requiredEnv("STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET");
+    const missing = requiredEnv("STRIPE_WEBHOOK_SECRET");
     if (missing.length) { res.status(503).json({ error: `Stripe webhook is not configured. Missing: ${missing.join(", ")}`, missing }); return; }
     try {
-      const stripe = stripeClient()!;
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_connector_webhook_verification");
       const signature = String(req.headers["stripe-signature"] || "");
       const event = stripe.webhooks.constructEvent(raw, signature, process.env.STRIPE_WEBHOOK_SECRET!);
       const inserted = await pool.query("INSERT INTO billing_events (id, provider, event_type) VALUES ($1, 'stripe', $2) ON CONFLICT DO NOTHING RETURNING id", [event.id, event.type]);
@@ -529,7 +539,7 @@ router.post("/webhooks/:provider", async (req, res) => {
         if (["paid", "no_payment_required"].includes(object.payment_status) && typeof metadata.userId === "string" && typeof metadata.plan === "string" && boxId && object.id) {
           const pending = (await pool.query("SELECT * FROM box_subscriptions WHERE user_id = $1 AND box_id = $2 AND pending_payment_id = $3 AND status = 'pending_payment'", [metadata.userId, boxId, object.id])).rows[0];
           if (pending && object.subscription) {
-            const subscription = await stripe.subscriptions.retrieve(String(object.subscription));
+            const subscription = await stripeConnectorRequest<Record<string, any>>(`/v1/subscriptions/${encodeURIComponent(String(object.subscription))}`);
             const subscriptionMetadata = subscription.metadata || {};
             if (subscriptionMetadata.userId === metadata.userId && subscriptionMetadata.boxId === boxId && ["trialing", "active"].includes(subscription.status)) {
               const trialEnd = subscription.trial_end || null;
