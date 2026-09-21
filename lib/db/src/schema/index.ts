@@ -45,6 +45,23 @@ export const entitlements = pgTable("entitlements", {
   selectedPlan: text("selected_plan"),
 });
 
+export const boxSubscriptions = pgTable("box_subscriptions", {
+  userId: text("user_id").notNull(),
+  boxId: text("box_id").notNull(),
+  plan: text("plan").default("free").notNull(),
+  status: text("status").default("inactive").notNull(),
+  trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  currentPeriodEndsAt: timestamp("current_period_ends_at", { withTimezone: true }),
+  provider: text("provider"),
+  providerCustomerId: text("provider_customer_id"),
+  providerSubscriptionId: text("provider_subscription_id"),
+  pendingPaymentId: text("pending_payment_id"),
+  selectedPlan: text("selected_plan"),
+}, (table) => [
+  primaryKey({ columns: [table.userId, table.boxId] }),
+  uniqueIndex("box_subscriptions_provider_subscription_unique").on(table.providerSubscriptionId),
+]);
+
 export const lessonProgress = pgTable("lesson_progress", {
   userId: text("user_id").notNull(),
   lessonId: text("lesson_id").notNull(),

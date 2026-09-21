@@ -22,11 +22,13 @@ import type {
 import type {
   AssessPronunciation200,
   AssessPronunciationBody,
+  CancelCurrentSubscriptionBody,
   CancellationResponse,
   ChatMessageInput,
   ChatMessageResponse,
   CorrectPracticeSentence200,
   CorrectPracticeSentenceBody,
+  CreatePremiumCheckoutBody,
   EmptySubscription,
   ExportAccountData200,
   GetPracticeProgress200,
@@ -460,7 +462,7 @@ export const getGetCurrentSubscriptionUrl = () => {
 }
 
 /**
- * @summary Get the signed session owner's current entitlement and subscription
+ * @summary Get independently tracked subscriptions for both learning boxes
  */
 export const getCurrentSubscription = async ( options?: Parameters<typeof customFetch>[1]): Promise<SubscriptionDetails | EmptySubscription> => {
 
@@ -507,7 +509,7 @@ export type GetCurrentSubscriptionQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Get the signed session owner's current entitlement and subscription
+ * @summary Get independently tracked subscriptions for both learning boxes
  */
 
 export function useGetCurrentSubscription<TData = Awaited<ReturnType<typeof getCurrentSubscription>>, TError = ErrorType<unknown>>(
@@ -539,14 +541,14 @@ export const getCancelCurrentSubscriptionUrl = () => {
 /**
  * @summary Schedule cancellation at the end of the current trial or billing period
  */
-export const cancelCurrentSubscription = async ( options?: Parameters<typeof customFetch>[1]): Promise<CancellationResponse> => {
+export const cancelCurrentSubscription = async (cancelCurrentSubscriptionBody: CancelCurrentSubscriptionBody, options?: Parameters<typeof customFetch>[1]): Promise<CancellationResponse> => {
 
   return customFetch<CancellationResponse>(getCancelCurrentSubscriptionUrl(),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(cancelCurrentSubscriptionBody)
   }
 );}
 
@@ -555,8 +557,8 @@ export const cancelCurrentSubscription = async ( options?: Parameters<typeof cus
 
 
 export const getCancelCurrentSubscriptionMutationOptions = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelCurrentSubscription>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof cancelCurrentSubscription>>, TError,void, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelCurrentSubscription>>, TError,{data: BodyType<CancelCurrentSubscriptionBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelCurrentSubscription>>, TError,{data: BodyType<CancelCurrentSubscriptionBody>}, TContext> => {
 
 const mutationKey = ['cancelCurrentSubscription'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -568,10 +570,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelCurrentSubscription>>, void> = () => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelCurrentSubscription>>, {data: BodyType<CancelCurrentSubscriptionBody>}> = (props) => {
+          const {data} = props ?? {};
 
-
-          return  cancelCurrentSubscription(requestOptions)
+          return  cancelCurrentSubscription(data,requestOptions)
         }
 
 
@@ -582,18 +584,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type CancelCurrentSubscriptionMutationResult = NonNullable<Awaited<ReturnType<typeof cancelCurrentSubscription>>>
-
+    export type CancelCurrentSubscriptionMutationBody = BodyType<CancelCurrentSubscriptionBody>
     export type CancelCurrentSubscriptionMutationError = ErrorType<void>
 
     /**
  * @summary Schedule cancellation at the end of the current trial or billing period
  */
 export const useCancelCurrentSubscription = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelCurrentSubscription>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelCurrentSubscription>>, TError,{data: BodyType<CancelCurrentSubscriptionBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof cancelCurrentSubscription>>,
         TError,
-        void,
+        {data: BodyType<CancelCurrentSubscriptionBody>},
         TContext
       > => {
       return useMutation(getCancelCurrentSubscriptionMutationOptions(options));
@@ -1505,24 +1507,16 @@ export const getCreatePremiumCheckoutUrl = () => {
 }
 
 /**
- * @summary Create provider checkout after external billing setup
+ * @summary Create a provider checkout for one independently billed learning box
  */
-export type CreatePremiumCheckoutRequest = {
-  plan: 'monthly' | 'quarterly' | 'yearly';
-  provider: 'stripe' | 'razorpay';
-  country: string;
-};
+export const createPremiumCheckout = async (createPremiumCheckoutBody: CreatePremiumCheckoutBody, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
 
-export const createPremiumCheckout = async (body: CreatePremiumCheckoutRequest, options?: Parameters<typeof customFetch>[1]): Promise<any> => {
-
-  return customFetch<any>(getCreatePremiumCheckoutUrl(),
+  return customFetch<void>(getCreatePremiumCheckoutUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...(options?.headers || {}) },
-    body: JSON.stringify(body)
-
-
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createPremiumCheckoutBody)
   }
 );}
 
@@ -1530,9 +1524,9 @@ export const createPremiumCheckout = async (body: CreatePremiumCheckoutRequest, 
 
 
 
-export const getCreatePremiumCheckoutMutationOptions = <TError = ErrorType<any>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPremiumCheckout>>, TError,CreatePremiumCheckoutRequest, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createPremiumCheckout>>, TError,CreatePremiumCheckoutRequest, TContext> => {
+export const getCreatePremiumCheckoutMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPremiumCheckout>>, TError,{data: BodyType<CreatePremiumCheckoutBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPremiumCheckout>>, TError,{data: BodyType<CreatePremiumCheckoutBody>}, TContext> => {
 
 const mutationKey = ['createPremiumCheckout'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -1544,10 +1538,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPremiumCheckout>>, CreatePremiumCheckoutRequest> = (body) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPremiumCheckout>>, {data: BodyType<CreatePremiumCheckoutBody>}> = (props) => {
+          const {data} = props ?? {};
 
-
-          return  createPremiumCheckout(body, requestOptions)
+          return  createPremiumCheckout(data,requestOptions)
         }
 
 
@@ -1557,19 +1551,19 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-export type CreatePremiumCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof createPremiumCheckout>>>
-
-export type CreatePremiumCheckoutMutationError = ErrorType<any>
+    export type CreatePremiumCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof createPremiumCheckout>>>
+    export type CreatePremiumCheckoutMutationBody = BodyType<CreatePremiumCheckoutBody>
+    export type CreatePremiumCheckoutMutationError = ErrorType<void>
 
     /**
- * @summary Create provider checkout after external billing setup
+ * @summary Create a provider checkout for one independently billed learning box
  */
-export const useCreatePremiumCheckout = <TError = ErrorType<any>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPremiumCheckout>>, TError,CreatePremiumCheckoutRequest, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useCreatePremiumCheckout = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPremiumCheckout>>, TError,{data: BodyType<CreatePremiumCheckoutBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createPremiumCheckout>>,
         TError,
-         CreatePremiumCheckoutRequest,
+        {data: BodyType<CreatePremiumCheckoutBody>},
         TContext
       > => {
       return useMutation(getCreatePremiumCheckoutMutationOptions(options));

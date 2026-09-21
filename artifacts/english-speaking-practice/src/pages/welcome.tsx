@@ -3,14 +3,14 @@ import { Link } from 'wouter';
 import { useListPremiumPlans } from '@workspace/api-client-react';
 
 const fallbackPlans = [
-  { id: 'monthly', label: 'Monthly', price: '₹399', detail: 'per month' },
-  { id: 'quarterly', label: 'Quarterly', price: '₹999', detail: 'every 3 months · Save 17%' },
+  { id: 'monthly', label: 'Monthly', price: '₹349', detail: 'per month' },
+  { id: 'quarterly', label: 'Quarterly', price: '₹899', detail: 'every 3 months · Save 14%' },
   { id: 'yearly', label: 'Yearly', price: '₹2,999', detail: 'every 12 months · Save 37%' },
 ];
 
 function planInfo(plan: { id: string; label?: string }) {
-  if (plan.id === 'monthly') return { ...plan, label: 'Monthly', price: '₹399', detail: 'per month' };
-  if (plan.id === 'quarterly') return { ...plan, label: 'Quarterly', price: '₹999', detail: 'every 3 months · Save 17%' };
+  if (plan.id === 'monthly') return { ...plan, label: 'Monthly', price: '₹349', detail: 'per month' };
+  if (plan.id === 'quarterly') return { ...plan, label: 'Quarterly', price: '₹899', detail: 'every 3 months · Save 14%' };
   return { ...plan, label: 'Yearly', price: '₹2,999', detail: 'every 12 months · Save 37%', bestValue: true };
 }
 
@@ -26,8 +26,8 @@ export function Welcome() {
             <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-bold text-primary"><Sparkles size={17} /> Start with confidence</div>
             <h1 className="text-3xl font-bold tracking-tight md:text-5xl">Welcome to Rllora AI English Speaking!</h1>
             <Link href="/sign-up?redirect_url=/pricing" className="mx-auto mt-7 flex w-full max-w-xl flex-col items-center justify-center rounded-2xl bg-purple-600 px-6 py-4 text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-purple-700">
-              <span className="text-lg font-extrabold md:text-xl">Create Account &amp; Start Free Trial – ₹5</span>
-              <span className="mt-1 text-base font-semibold text-purple-100">Get full access for 2 days</span>
+              <span className="text-lg font-extrabold md:text-xl">Create Account &amp; Start Free Trial</span>
+              <span className="mt-1 text-base font-semibold text-purple-100">Get both learning boxes for 2 days</span>
             </Link>
           </div>
 
@@ -41,7 +41,7 @@ export function Welcome() {
           </Link>
 
           <div className="mt-10 border-t border-border pt-8">
-            <div className="mb-5"><h2 className="text-2xl font-bold">Choose what happens after your trial</h2><p className="mt-2 text-lg font-medium text-muted-foreground">Your ₹5 trial gives you Premium access for two days. If you continue, select the plan that fits you best.</p></div>
+            <div className="mb-5"><h2 className="text-2xl font-bold">Choose what happens after your trial</h2><p className="mt-2 text-lg font-medium text-muted-foreground">Your free trial gives you both learning boxes for two days. After that, each box has its own subscription.</p></div>
             <div className="grid gap-4 md:grid-cols-3">
               {plans.map((plan: any) => (
                 <div key={plan.id} className={`rounded-2xl border p-5 ${plan.bestValue ? 'border-primary bg-primary/5' : 'border-border bg-background'}`}>

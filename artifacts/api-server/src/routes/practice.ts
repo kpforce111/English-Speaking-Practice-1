@@ -12,14 +12,22 @@ import { ensureCompatibleFormat, speechToText, textToSpeech } from "@workspace/i
 import Stripe from "stripe";
 import { publicAppUrl } from "../lib/publicAppUrl";
 import { compactLearningContext, routeAiText } from "../lib/aiRouter";
+import {
+  boxEnvSegment,
+  effectiveBoxStatus,
+  grantSharedTrial,
+  learningBoxes,
+  parseLearningBoxId,
+  sharedTrialState,
+} from "../lib/boxSubscriptions";
 
 const router: IRouter = Router();
 const connectors = new ReplitConnectors();
 const scenarios = ["job-interview", "office", "shopping", "travel", "doctor", "customer-service", "bpo", "daily-life"] as const;
 const levels = ["beginner", "intermediate", "advanced"] as const;
 const plans = {
-  monthly: { amountPaise: 39900, label: "Monthly: ₹399/month — cancel anytime." },
-  quarterly: { amountPaise: 99900, label: "Quarterly: ₹999 / 3 months (Save 17%) — cancel anytime." },
+  monthly: { amountPaise: 34900, label: "Monthly: ₹349/month — cancel anytime." },
+  quarterly: { amountPaise: 89900, label: "Quarterly: ₹899 / 3 months (Save 14%) — cancel anytime." },
   yearly: { amountPaise: 299900, label: "Yearly: ₹2,999 / 12 months (Save 37%, Best Value) — cancel anytime." },
 } as const;
 
@@ -107,15 +115,16 @@ router.get("/session", async (req, res) => {
 router.get("/account/export", async (req, res) => {
   if (!authenticatedClerkUserId(req)) { res.status(401).json({ error: "Sign in to export your account." }); return; }
   const userId = await getUserId(req, res);
-  const [account, subscription, usageRows, progressRows, eventRows] = await Promise.all([
+  const [account, subscription, boxSubscriptions, usageRows, progressRows, eventRows] = await Promise.all([
     pool.query("SELECT id, created_at, stripe_customer_id, razorpay_customer_id FROM users WHERE id = $1", [userId]),
     pool.query("SELECT * FROM entitlements WHERE user_id = $1", [userId]),
+    pool.query("SELECT * FROM box_subscriptions WHERE user_id = $1 ORDER BY box_id", [userId]),
     pool.query("SELECT * FROM daily_usage WHERE user_id = $1 ORDER BY usage_date", [userId]),
     pool.query("SELECT * FROM lesson_progress WHERE user_id = $1 ORDER BY updated_at", [userId]),
     pool.query("SELECT id, kind, content, metadata, duration_seconds, created_at FROM practice_events WHERE user_id = $1 ORDER BY created_at", [userId]),
   ]);
   res.setHeader("Content-Disposition", "attachment; filename=rllora-account-data.json");
-  res.json({ exportedAt: new Date().toISOString(), account: account.rows[0], entitlement: subscription.rows[0], dailyUsage: usageRows.rows, lessonProgress: progressRows.rows, practiceEvents: eventRows.rows });
+  res.json({ exportedAt: new Date().toISOString(), account: account.rows[0], entitlement: subscription.rows[0], boxSubscriptions: boxSubscriptions.rows, dailyUsage: usageRows.rows, lessonProgress: progressRows.rows, practiceEvents: eventRows.rows });
 });
 
 router.delete("/account", async (req, res) => {
@@ -134,6 +143,7 @@ router.delete("/account", async (req, res) => {
     await client.query("DELETE FROM practice_events WHERE user_id = $1", [userId]);
     await client.query("DELETE FROM daily_usage WHERE user_id = $1", [userId]);
     await client.query("DELETE FROM lesson_progress WHERE user_id = $1", [userId]);
+    await client.query("DELETE FROM box_subscriptions WHERE user_id = $1", [userId]);
     await client.query("DELETE FROM entitlements WHERE user_id = $1", [userId]);
     await client.query("DELETE FROM device_sessions WHERE user_id = $1", [userId]);
     await client.query("DELETE FROM users WHERE id = $1", [userId]);
@@ -150,27 +160,39 @@ router.delete("/account", async (req, res) => {
 
 router.get("/subscription", async (req, res) => {
   const userId = await getUserId(req, res);
-  const current = await entitlement(userId);
-  if (!current.provider || !current.provider_subscription_id || current.effectivePlan === "free") {
-    res.status(200).json({ subscription: null, status: "none" });
-    return;
-  }
+  const rows = await pool.query("SELECT * FROM box_subscriptions WHERE user_id = $1 ORDER BY box_id", [userId]);
+  const subscriptions = rows.rows.map((row) => {
+    const effective = effectiveBoxStatus(row);
+    return {
+      boxId: row.box_id,
+      box: learningBoxes[row.box_id as keyof typeof learningBoxes],
+      provider: row.provider,
+      plan: effective.effectivePlan,
+      selectedPlan: row.selected_plan,
+      status: effective.effectiveStatus,
+      providerStatus: row.status,
+      providerSubscriptionId: row.provider_subscription_id,
+      trialEndsAt: row.trial_ends_at,
+      currentPeriodEndsAt: row.current_period_ends_at,
+      cancelPending: row.status === "cancel_pending",
+    };
+  });
+  const trialState = await sharedTrialState(userId);
   res.json({
-    provider: current.provider,
-    plan: current.effectivePlan,
-    status: current.effectiveStatus,
-    providerStatus: current.status,
-    providerSubscriptionId: current.provider_subscription_id,
-    trialEndsAt: current.trial_ends_at,
-    currentPeriodEndsAt: current.current_period_ends_at,
-    cancelPending: current.status === "cancel_pending",
+    subscriptions,
+    trialUsed: trialState.used,
+    activeTrialEndsAt: trialState.activeTrialEndsAt?.toISOString() || null,
+    status: subscriptions.length ? "available" : "none",
   });
 });
 
 router.post("/subscription/cancel", async (req, res) => {
   const userId = await getUserId(req, res);
-  const current = await entitlement(userId);
-  if (!current.provider || !current.provider_subscription_id || current.effectivePlan === "free") {
+  const boxId = parseLearningBoxId(req.body?.boxId);
+  if (!boxId) { res.status(400).json({ error: "boxId must be read_write or audio_first" }); return; }
+  const currentRow = (await pool.query("SELECT * FROM box_subscriptions WHERE user_id = $1 AND box_id = $2", [userId, boxId])).rows[0];
+  const current = currentRow ? effectiveBoxStatus(currentRow) : null;
+  if (!current || !current.provider || !current.provider_subscription_id || current.effectivePlan === "free") {
     res.status(404).json({ error: "No active subscription found.", code: "SUBSCRIPTION_NOT_FOUND" });
     return;
   }
@@ -188,7 +210,7 @@ router.post("/subscription/cancel", async (req, res) => {
       const end = subscription.cancel_at
         ? new Date(subscription.cancel_at * 1000).toISOString()
         : current.current_period_ends_at || current.trial_ends_at || null;
-      await pool.query("UPDATE entitlements SET status = 'cancel_pending', current_period_ends_at = COALESCE($1, current_period_ends_at) WHERE user_id = $2", [end, userId]);
+      await pool.query("UPDATE box_subscriptions SET status = 'cancel_pending', current_period_ends_at = COALESCE($1, current_period_ends_at) WHERE user_id = $2 AND box_id = $3", [end, userId, boxId]);
       res.json({ provider: "stripe", status: "cancel_pending", cancelAtPeriodEnd: true, accessUntil: end });
       return;
     }
@@ -206,7 +228,7 @@ router.post("/subscription/cancel", async (req, res) => {
         res.status(502).json({ error: "Razorpay could not schedule subscription cancellation." });
         return;
       }
-      await pool.query("UPDATE entitlements SET status = 'cancel_pending' WHERE user_id = $1", [userId]);
+      await pool.query("UPDATE box_subscriptions SET status = 'cancel_pending' WHERE user_id = $1 AND box_id = $2", [userId, boxId]);
       res.json({ provider: "razorpay", status: "cancel_pending", cancelAtCycleEnd: true, accessUntil: current.current_period_ends_at || current.trial_ends_at || null });
       return;
     }
@@ -379,7 +401,12 @@ router.get("/weekly-report", async (req, res) => {
   res.json({ period: "last-7-days", highlights: rows.rows, message: "Consistency is progress. Keep one short practice session going each day." });
 });
 
-router.get("/plans", (_req, res) => res.json({ trial: "Create your account for just ₹5 and get a 2-day free trial. Cancel anytime before the trial ends if it's not for you — no extra charges.", plans: Object.entries(plans).map(([id, value]) => ({ id, ...value, bestValue: id === "yearly" })), features: ["Voice Conversation (15 minutes per day)", "Real-Time Correction", "Translation", "Pronunciation + Fluency Score", "Roleplays", "Daily Lessons", "Progress Tracking", "Weekly Report", "Strict Mode and Soft Mode"] }));
+router.get("/plans", (_req, res) => res.json({
+  trial: "Start with 2 days of full access to both learning boxes. No trial charge.",
+  boxes: Object.values(learningBoxes),
+  plans: Object.entries(plans).map(([id, value]) => ({ id, ...value, bestValue: id === "yearly" })),
+  features: ["Voice Conversation (15 minutes per day)", "Real-Time Correction", "Translation", "Pronunciation + Fluency Score", "Roleplays", "Daily Lessons", "Progress Tracking", "Weekly Report", "Strict Mode and Soft Mode"],
+}));
 
 router.get("/payment-options", (req, res) => {
   const country = String(req.query.country || "").toUpperCase();
@@ -393,61 +420,90 @@ router.post("/checkout", async (req, res) => {
   if (!authenticatedClerkUserId(req)) { res.status(401).json({ error: "Sign in before starting Premium checkout.", code: "SIGN_IN_REQUIRED" }); return; }
   const userId = await getUserId(req, res);
   const { provider, plan = "monthly", country = "IN" } = req.body || {};
+  const boxId = parseLearningBoxId(req.body?.boxId);
+  if (!boxId) { res.status(400).json({ error: "boxId must be read_write or audio_first" }); return; }
   if (!plans[plan as keyof typeof plans]) { res.status(400).json({ error: "plan must be monthly, quarterly, or yearly" }); return; }
-  const existingEntitlement = await entitlement(userId);
-  if (existingEntitlement.effectiveStatus === "pending_payment") {
+  const existingRow = (await pool.query("SELECT * FROM box_subscriptions WHERE user_id = $1 AND box_id = $2", [userId, boxId])).rows[0];
+  const existingEntitlement = existingRow ? effectiveBoxStatus(existingRow) : null;
+  if (existingEntitlement?.effectiveStatus === "pending_payment") {
     res.status(409).json({ error: "A checkout payment is already pending.", code: "PAYMENT_PENDING" });
     return;
   }
-  if (existingEntitlement.effectivePlan !== "free") {
-    res.status(409).json({ error: "An active subscription already exists.", code: "SUBSCRIPTION_EXISTS" });
+  if (existingEntitlement && existingEntitlement.effectivePlan !== "free" && existingRow.provider_subscription_id) {
+    res.status(409).json({ error: "An active subscription already exists for this learning box.", code: "SUBSCRIPTION_EXISTS" });
     return;
   }
+  const trialState = await sharedTrialState(userId);
+  const proposedTrialEnds = trialState.activeTrialEndsAt || (trialState.used ? null : new Date(Date.now() + 2 * 24 * 60 * 60 * 1000));
+  const grantsSharedTrial = !trialState.used;
   if (provider === "razorpay") {
-    const env = requiredEnv("RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", `RAZORPAY_PLAN_${String(plan).toUpperCase()}`);
+    const planKey = `RAZORPAY_PLAN_${boxEnvSegment(boxId)}_${String(plan).toUpperCase()}`;
+    const env = requiredEnv("RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", planKey);
     if (env.length) { res.status(503).json({ error: `Razorpay is not configured. Missing: ${env.join(", ")}`, code: "RAZORPAY_NOT_CONFIGURED", missing: env }); return; }
-    const trialEnds = Math.floor(Date.now() / 1000) + 2 * 24 * 60 * 60;
     const auth = Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString("base64");
-    const orderResponse = await fetch("https://api.razorpay.com/v1/orders", {
-      method: "POST",
-      headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: 500, currency: "INR", receipt: `trial_${userId}_${Date.now()}`, notes: { userId, plan, purpose: "2-day-premium-trial" } }),
-    });
-    if (!orderResponse.ok) { res.status(502).json({ error: "Razorpay could not create the ₹5 trial order." }); return; }
-    const order = await orderResponse.json() as Record<string, any>;
     const upstream = await fetch("https://api.razorpay.com/v1/subscriptions", {
       method: "POST",
       headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ plan_id: process.env[`RAZORPAY_PLAN_${String(plan).toUpperCase()}`], total_count: 120, start_at: trialEnds, customer_notify: 1, notes: { userId, plan, country, trialAmountPaise: 500, paymentMethod: "upi_autopay_or_card" } }),
+      body: JSON.stringify({
+        plan_id: process.env[planKey],
+        total_count: 120,
+        ...(proposedTrialEnds ? { start_at: Math.floor(proposedTrialEnds.getTime() / 1000) } : {}),
+        customer_notify: 1,
+        notes: { userId, plan, boxId, country, grantsSharedTrial: grantsSharedTrial ? "true" : "false", paymentMethod: "upi_autopay_or_card" },
+      }),
     });
     if (!upstream.ok) { req.log.error({ status: upstream.status }, "Razorpay subscription creation failed"); res.status(502).json({ error: "Razorpay could not create the subscription." }); return; }
     const subscription = await upstream.json() as Record<string, any>;
-    await pool.query("UPDATE entitlements SET plan = 'free', provider = 'razorpay', selected_plan = $1, provider_subscription_id = $2, pending_payment_id = $3, status = 'pending_payment', trial_ends_at = NULL WHERE user_id = $4", [plan, subscription.id, order.id, userId]);
-    res.json({ provider: "razorpay", keyId: process.env.RAZORPAY_KEY_ID, trialOrderId: order.id, trialAmountPaise: 500, subscriptionId: subscription.id, status: subscription.status, trialEndsAt: new Date(trialEnds * 1000).toISOString(), upiAutopaySupported: true });
+    await pool.query(
+      `INSERT INTO box_subscriptions (user_id, box_id, plan, provider, selected_plan, provider_subscription_id, pending_payment_id, status, trial_ends_at)
+       VALUES ($1, $2, 'free', 'razorpay', $3, $4, $4, 'pending_payment', $5)
+       ON CONFLICT (user_id, box_id) DO UPDATE SET
+         plan = 'free', provider = 'razorpay', selected_plan = EXCLUDED.selected_plan,
+         provider_subscription_id = EXCLUDED.provider_subscription_id,
+         pending_payment_id = EXCLUDED.pending_payment_id, status = 'pending_payment',
+         trial_ends_at = EXCLUDED.trial_ends_at`,
+      [userId, boxId, plan, subscription.id, proposedTrialEnds?.toISOString() || null],
+    );
+    res.json({ provider: "razorpay", keyId: process.env.RAZORPAY_KEY_ID, trialAmountPaise: 0, subscriptionId: subscription.id, status: subscription.status, trialEndsAt: proposedTrialEnds?.toISOString() || null, upiAutopaySupported: true });
     return;
   }
   if (provider === "stripe") {
-    const priceKey = `STRIPE_PRICE_${String(plan).toUpperCase()}`;
-    const missing = requiredEnv("STRIPE_SECRET_KEY", priceKey, "STRIPE_TRIAL_PRICE_ID");
+    const priceKey = `STRIPE_PRICE_${boxEnvSegment(boxId)}_${String(plan).toUpperCase()}`;
+    const missing = requiredEnv("STRIPE_SECRET_KEY", priceKey);
     if (missing.length) { res.status(503).json({ error: `Stripe is not configured. Missing: ${missing.join(", ")}`, code: "STRIPE_NOT_CONFIGURED", missing }); return; }
     const stripe = stripeClient();
     if (!stripe) { res.status(503).json({ error: "Stripe is not configured.", code: "STRIPE_NOT_CONFIGURED" }); return; }
     const origin = publicAppUrl();
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
-      line_items: [{ price: process.env.STRIPE_TRIAL_PRICE_ID!, quantity: 1 }, { price: process.env[priceKey]!, quantity: 1 }],
-      subscription_data: { trial_period_days: 2, metadata: { userId, plan } },
-      metadata: { userId, plan, trialAmountPaise: "500" },
-      success_url: `${origin}/?checkout=success`,
-      cancel_url: `${origin}/?checkout=cancelled`,
+      line_items: [{ price: process.env[priceKey]!, quantity: 1 }],
+      subscription_data: {
+        ...(proposedTrialEnds
+          ? (grantsSharedTrial
+            ? { trial_period_days: 2 }
+            : { trial_end: Math.floor(proposedTrialEnds.getTime() / 1000) })
+          : {}),
+        metadata: { userId, plan, boxId },
+      },
+      metadata: { userId, plan, boxId, grantsSharedTrial: grantsSharedTrial ? "true" : "false" },
+      success_url: `${origin}/pricing?checkout=success&box=${boxId}`,
+      cancel_url: `${origin}/pricing?checkout=cancelled&box=${boxId}`,
       customer_creation: "always",
       allow_promotion_codes: true,
     });
     if (typeof session.customer === "string") {
       await pool.query("UPDATE users SET stripe_customer_id = $1 WHERE id = $2", [session.customer, userId]);
     }
-    await pool.query("UPDATE entitlements SET plan = 'free', provider = 'stripe', selected_plan = $1, pending_payment_id = $2, provider_subscription_id = NULL, status = 'pending_payment', trial_ends_at = NULL WHERE user_id = $3", [plan, session.id, userId]);
-    res.json({ provider: "stripe", checkoutUrl: session.url, sessionId: session.id, trialDays: 2 });
+    await pool.query(
+      `INSERT INTO box_subscriptions (user_id, box_id, plan, provider, selected_plan, pending_payment_id, provider_subscription_id, status, trial_ends_at)
+       VALUES ($1, $2, 'free', 'stripe', $3, $4, NULL, 'pending_payment', $5)
+       ON CONFLICT (user_id, box_id) DO UPDATE SET
+         plan = 'free', provider = 'stripe', selected_plan = EXCLUDED.selected_plan,
+         pending_payment_id = EXCLUDED.pending_payment_id, provider_subscription_id = NULL,
+         status = 'pending_payment', trial_ends_at = EXCLUDED.trial_ends_at`,
+      [userId, boxId, plan, session.id, proposedTrialEnds?.toISOString() || null],
+    );
+    res.json({ provider: "stripe", checkoutUrl: session.url, sessionId: session.id, trialEndsAt: proposedTrialEnds?.toISOString() || null, boxId });
     return;
   }
   res.status(400).json({ error: "provider must be razorpay or stripe" });
@@ -469,16 +525,27 @@ router.post("/webhooks/:provider", async (req, res) => {
       const object = event.data.object as any;
       const metadata = object.metadata || {};
       if (event.type === "checkout.session.completed") {
-        if (object.payment_status === "paid" && typeof metadata.userId === "string" && typeof metadata.plan === "string" && object.id) {
-          const pending = (await pool.query("SELECT * FROM entitlements WHERE user_id = $1 AND pending_payment_id = $2 AND status = 'pending_payment'", [metadata.userId, object.id])).rows[0];
+        const boxId = parseLearningBoxId(metadata.boxId);
+        if (["paid", "no_payment_required"].includes(object.payment_status) && typeof metadata.userId === "string" && typeof metadata.plan === "string" && boxId && object.id) {
+          const pending = (await pool.query("SELECT * FROM box_subscriptions WHERE user_id = $1 AND box_id = $2 AND pending_payment_id = $3 AND status = 'pending_payment'", [metadata.userId, boxId, object.id])).rows[0];
           if (pending && object.subscription) {
             const subscription = await stripe.subscriptions.retrieve(String(object.subscription));
             const subscriptionMetadata = subscription.metadata || {};
-            if (subscriptionMetadata.userId === metadata.userId && ["trialing", "active"].includes(subscription.status)) {
-              const trialEnd = subscription.trial_end || Math.floor(Date.now() / 1000) + 2 * 24 * 60 * 60;
+            if (subscriptionMetadata.userId === metadata.userId && subscriptionMetadata.boxId === boxId && ["trialing", "active"].includes(subscription.status)) {
+              const trialEnd = subscription.trial_end || null;
               const verifiedPeriodEnd = (subscription as any).current_period_end;
-              await pool.query("UPDATE entitlements SET plan = $1, status = $2, provider_subscription_id = $3, provider_customer_id = $4, pending_payment_id = NULL, trial_ends_at = TO_TIMESTAMP($5), current_period_ends_at = CASE WHEN $6 THEN TO_TIMESTAMP($7) ELSE current_period_ends_at END WHERE user_id = $8 AND pending_payment_id = $9 AND status = 'pending_payment'",
-                [metadata.plan, subscription.status === "trialing" ? "trialing" : "active", subscription.id, object.customer || null, trialEnd, Boolean(verifiedPeriodEnd), verifiedPeriodEnd || 0, metadata.userId, object.id]);
+              if (trialEnd && metadata.grantsSharedTrial === "true") {
+                await grantSharedTrial(metadata.userId, new Date(trialEnd * 1000));
+              }
+              await pool.query(
+                `UPDATE box_subscriptions SET
+                   plan = $1, status = $2, provider_subscription_id = $3,
+                   provider_customer_id = $4, pending_payment_id = NULL,
+                   trial_ends_at = CASE WHEN $5 THEN TO_TIMESTAMP($6) ELSE trial_ends_at END,
+                   current_period_ends_at = CASE WHEN $7 THEN TO_TIMESTAMP($8) ELSE current_period_ends_at END
+                 WHERE user_id = $9 AND box_id = $10 AND pending_payment_id = $11 AND status = 'pending_payment'`,
+                [metadata.plan, subscription.status === "trialing" ? "trialing" : "active", subscription.id, object.customer || null, Boolean(trialEnd), trialEnd || 0, Boolean(verifiedPeriodEnd), verifiedPeriodEnd || 0, metadata.userId, boxId, object.id],
+              );
               if (object.customer) await pool.query("UPDATE users SET stripe_customer_id = $1 WHERE id = $2", [object.customer, metadata.userId]);
             }
           }
@@ -486,13 +553,14 @@ router.post("/webhooks/:provider", async (req, res) => {
         res.json({ received: true });
         return;
       }
-      if (metadata.userId && event.type.startsWith("customer.subscription.")) {
-        const owned = (await pool.query("SELECT 1 FROM entitlements WHERE user_id = $1 AND provider_subscription_id = $2 AND status <> 'pending_payment'", [metadata.userId, object.id])).rowCount === 1;
+      const subscriptionBoxId = parseLearningBoxId(metadata.boxId);
+      if (metadata.userId && subscriptionBoxId && event.type.startsWith("customer.subscription.")) {
+        const owned = (await pool.query("SELECT 1 FROM box_subscriptions WHERE user_id = $1 AND box_id = $2 AND provider_subscription_id = $3 AND status <> 'pending_payment'", [metadata.userId, subscriptionBoxId, object.id])).rowCount === 1;
         if (!owned) { res.json({ received: true, ignored: "subscription_not_owned_or_unpaid" }); return; }
         const active = event.type !== "customer.subscription.deleted" && ["active", "trialing"].includes(object.status || "active");
         const pendingCancel = active && Boolean(object.cancel_at_period_end);
-        await pool.query("UPDATE entitlements SET status = $1, plan = COALESCE($2, plan), provider_subscription_id = COALESCE($3, provider_subscription_id), provider_customer_id = COALESCE($4, provider_customer_id), current_period_ends_at = CASE WHEN $5 THEN TO_TIMESTAMP($6) ELSE current_period_ends_at END WHERE user_id = $7",
-          [pendingCancel ? "cancel_pending" : (active ? (object.status === "trialing" ? "trialing" : "active") : "cancelled"), metadata.plan || null, object.id || null, object.customer || null, Boolean(object.current_period_end), object.current_period_end || 0, metadata.userId]);
+        await pool.query("UPDATE box_subscriptions SET status = $1, plan = COALESCE($2, plan), provider_subscription_id = COALESCE($3, provider_subscription_id), provider_customer_id = COALESCE($4, provider_customer_id), current_period_ends_at = CASE WHEN $5 THEN TO_TIMESTAMP($6) ELSE current_period_ends_at END WHERE user_id = $7 AND box_id = $8",
+          [pendingCancel ? "cancel_pending" : (active ? (object.status === "trialing" ? "trialing" : "active") : "cancelled"), metadata.plan || null, object.id || null, object.customer || null, Boolean(object.current_period_end), object.current_period_end || 0, metadata.userId, subscriptionBoxId]);
       }
       res.json({ received: true });
     } catch (error) { req.log.warn({ error }, "invalid Stripe webhook"); res.status(400).json({ error: "Invalid Stripe webhook signature or payload." }); }
@@ -509,31 +577,28 @@ router.post("/webhooks/:provider", async (req, res) => {
     const inserted = await pool.query("INSERT INTO billing_events (id, provider, event_type) VALUES ($1, 'razorpay', $2) ON CONFLICT DO NOTHING RETURNING id", [eventId, String(event?.event || "subscription.updated")]);
     if (!inserted.rowCount) { res.json({ received: true, duplicate: true }); return; }
     const eventName = String(event?.event || "");
-    const orderEntity = event?.payload?.order?.entity;
-    const paymentEntity = event?.payload?.payment?.entity;
-    const paidOrderId = eventName === "order.paid" ? orderEntity?.id : (eventName === "payment.captured" ? paymentEntity?.order_id : null);
-    if (paidOrderId && (eventName === "order.paid" || (eventName === "payment.captured" && Number(paymentEntity?.amount) === 500 && paymentEntity?.status === "captured"))) {
-      const pending = (await pool.query("SELECT * FROM entitlements WHERE pending_payment_id = $1 AND status = 'pending_payment'", [String(paidOrderId)])).rows[0];
-      let notes = orderEntity?.notes || {};
-      if (eventName === "payment.captured" && pending) {
-        const auth = Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET || ""}`).toString("base64");
-        const orderLookup = await fetch(`https://api.razorpay.com/v1/orders/${encodeURIComponent(String(paidOrderId))}`, { headers: { Authorization: `Basic ${auth}` } });
-        if (orderLookup.ok) notes = ((await orderLookup.json()) as Record<string, any>).notes || {};
-      }
-      if (pending && notes.userId === pending.user_id && notes.purpose === "2-day-premium-trial") {
-        const trialEnds = Math.floor(Date.now() / 1000) + 2 * 24 * 60 * 60;
-        await pool.query("UPDATE entitlements SET plan = selected_plan, status = 'trialing', pending_payment_id = NULL, trial_ends_at = TO_TIMESTAMP($1) WHERE user_id = $2 AND pending_payment_id = $3 AND status = 'pending_payment'", [trialEnds, pending.user_id, String(paidOrderId)]);
-        if (paymentEntity?.customer_id) await pool.query("UPDATE users SET razorpay_customer_id = $1 WHERE id = $2", [paymentEntity.customer_id, pending.user_id]);
-      }
-      res.json({ received: true });
-      return;
-    }
     const entity = event?.payload?.subscription?.entity;
     if (entity?.id) {
-      const owned = (await pool.query("SELECT 1 FROM entitlements WHERE provider_subscription_id = $1 AND status <> 'pending_payment'", [entity.id])).rowCount === 1;
-      if (owned) {
-        await pool.query("UPDATE entitlements SET status = $1, provider_customer_id = COALESCE($2, provider_customer_id) WHERE provider_subscription_id = $3", [entity.status === "active" ? "active" : entity.status, entity.customer_id || null, entity.id]);
-        if (entity.customer_id) await pool.query("UPDATE users SET razorpay_customer_id = $1 WHERE id = (SELECT user_id FROM entitlements WHERE provider_subscription_id = $2)", [entity.customer_id, entity.id]);
+      const notes = entity.notes || {};
+      const boxId = parseLearningBoxId(notes.boxId);
+      const pending = (await pool.query("SELECT * FROM box_subscriptions WHERE provider_subscription_id = $1", [entity.id])).rows[0];
+      if (pending && boxId === pending.box_id && notes.userId === pending.user_id) {
+        const trialEndsAt = entity.start_at
+          ? new Date(Number(entity.start_at) * 1000)
+          : null;
+        if (trialEndsAt && notes.grantsSharedTrial === "true") await grantSharedTrial(pending.user_id, trialEndsAt);
+        const mappedStatus = trialEndsAt && trialEndsAt.getTime() > Date.now()
+          ? "trialing"
+          : entity.status === "active" ? "active" : String(entity.status || "authenticated");
+        await pool.query(
+          `UPDATE box_subscriptions SET
+             plan = selected_plan, status = $1, pending_payment_id = NULL,
+             provider_customer_id = COALESCE($2, provider_customer_id),
+             trial_ends_at = COALESCE($3, trial_ends_at)
+           WHERE user_id = $4 AND box_id = $5 AND provider_subscription_id = $6`,
+          [mappedStatus, entity.customer_id || null, trialEndsAt?.toISOString() || null, pending.user_id, boxId, entity.id],
+        );
+        if (entity.customer_id) await pool.query("UPDATE users SET razorpay_customer_id = $1 WHERE id = $2", [entity.customer_id, pending.user_id]);
       }
     }
     res.json({ received: true });

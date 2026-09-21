@@ -83,7 +83,7 @@ function SignUpPage() {
             Welcome to Rllora AI English Speaking! 🎉
           </h1>
           <p className="text-[16px] text-foreground leading-[1.6]">
-            Create your account for just ₹5 and get a 2-day free trial.
+            Create your account and get both learning boxes free for 2 days.
           </p>
           <ul className="space-y-4 text-[15px] font-medium text-foreground">
             <li className="flex items-start gap-2">

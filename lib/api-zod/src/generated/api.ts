@@ -60,7 +60,7 @@ export const DeleteAccountResponse = zod.void()
 
 
 /**
- * @summary Get the signed session owner's current entitlement and subscription
+ * @summary Get independently tracked subscriptions for both learning boxes
  */
 export const GetCurrentSubscriptionResponse = zod.union([zod.object({
   "provider": zod.enum(['stripe', 'razorpay']),
@@ -80,6 +80,10 @@ export const GetCurrentSubscriptionResponse = zod.union([zod.object({
 /**
  * @summary Schedule cancellation at the end of the current trial or billing period
  */
+export const CancelCurrentSubscriptionBody = zod.object({
+  "boxId": zod.enum(['read_write', 'audio_first'])
+})
+
 export const CancelCurrentSubscriptionResponse = zod.object({
   "provider": zod.enum(['stripe', 'razorpay']),
   "status": zod.enum(['cancel_pending']),
@@ -221,8 +225,15 @@ export const ListPaymentOptionsResponse = zod.record(zod.string(), zod.unknown()
 
 
 /**
- * @summary Create provider checkout after external billing setup
+ * @summary Create a provider checkout for one independently billed learning box
  */
+export const CreatePremiumCheckoutBody = zod.object({
+  "provider": zod.enum(['stripe', 'razorpay']),
+  "plan": zod.enum(['monthly', 'quarterly', 'yearly']),
+  "boxId": zod.enum(['read_write', 'audio_first']),
+  "country": zod.string().optional()
+})
+
 export const CreatePremiumCheckoutResponse = zod.unknown()
 
 

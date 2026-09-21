@@ -105,6 +105,18 @@ export type GetPracticeSession200 = { [key: string]: unknown };
 
 export type ExportAccountData200 = { [key: string]: unknown };
 
+export type CancelCurrentSubscriptionBodyBoxId = typeof CancelCurrentSubscriptionBodyBoxId[keyof typeof CancelCurrentSubscriptionBodyBoxId];
+
+
+export const CancelCurrentSubscriptionBodyBoxId = {
+  read_write: 'read_write',
+  audio_first: 'audio_first',
+} as const;
+
+export type CancelCurrentSubscriptionBody = {
+  boxId: CancelCurrentSubscriptionBodyBoxId;
+};
+
 export type SendVoiceConversationBody = {
   audioBase64: string;
   mimeType?: string;
@@ -181,4 +193,36 @@ country?: string;
 };
 
 export type ListPaymentOptions200 = { [key: string]: unknown };
+
+export type CreatePremiumCheckoutBodyProvider = typeof CreatePremiumCheckoutBodyProvider[keyof typeof CreatePremiumCheckoutBodyProvider];
+
+
+export const CreatePremiumCheckoutBodyProvider = {
+  stripe: 'stripe',
+  razorpay: 'razorpay',
+} as const;
+
+export type CreatePremiumCheckoutBodyPlan = typeof CreatePremiumCheckoutBodyPlan[keyof typeof CreatePremiumCheckoutBodyPlan];
+
+
+export const CreatePremiumCheckoutBodyPlan = {
+  monthly: 'monthly',
+  quarterly: 'quarterly',
+  yearly: 'yearly',
+} as const;
+
+export type CreatePremiumCheckoutBodyBoxId = typeof CreatePremiumCheckoutBodyBoxId[keyof typeof CreatePremiumCheckoutBodyBoxId];
+
+
+export const CreatePremiumCheckoutBodyBoxId = {
+  read_write: 'read_write',
+  audio_first: 'audio_first',
+} as const;
+
+export type CreatePremiumCheckoutBody = {
+  provider: CreatePremiumCheckoutBodyProvider;
+  plan: CreatePremiumCheckoutBodyPlan;
+  boxId: CreatePremiumCheckoutBodyBoxId;
+  country?: string;
+};
 

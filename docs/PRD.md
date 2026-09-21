@@ -27,3 +27,20 @@ These figures are a review snapshot, not a fixed runtime assumption. Recheck off
 - Home presents one primary practice action rather than six mode choices.
 - Tapping it starts the core spoken loop directly: **Speak → Correct → Repeat**.
 - Existing secondary capabilities remain available through their existing routes/navigation.
+
+## Cost policy
+
+- Use the cheapest production-grade option available in the current managed stack.
+- Text coaching uses the cheap/fast primary model; the stronger model is limited to complex requests and fallback.
+- Voice uses the lowest-cost supported managed audio models: `gpt-audio-mini` for TTS and `gpt-4o-mini-transcribe` for STT.
+- Use the existing managed PostgreSQL database and autoscale hosting rather than adding paid infrastructure.
+- Provider and model choices remain server-configurable; no client may hard-code an expensive provider.
+
+## Learning boxes and subscriptions
+
+- Box 1 is `read_write`: **For Those Who Can Read & Write**.
+- Box 2 is `audio_first`: **For Those Who Cannot Read & Write**.
+- The first trial gives 2 days of full access to both boxes at no charge.
+- After the trial, each box has an independent subscription and provider tracking record.
+- Each box currently offers Monthly ₹349, Quarterly ₹899, and Yearly ₹2,999.
+- A user may subscribe to either box or both; changing or cancelling one box must not modify the other.

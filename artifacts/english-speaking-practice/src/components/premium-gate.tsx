@@ -37,7 +37,7 @@ export function PremiumGate({ children, featureName = "This feature" }: { childr
         className="flex items-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-[14px] font-medium text-accent-foreground shadow-md transition-all hover:scale-[1.02] active:scale-95"
       >
         <Sparkles size={18} />
-        Start 2-Day Free Trial – ₹5
+        Start Free 2-Day Trial
       </Link>
     </div>
   );

@@ -88,7 +88,7 @@ paths:
     get:
       operationId: getCurrentSubscription
       tags: [practice]
-      summary: Get the signed session owner's current entitlement and subscription
+      summary: Get independently tracked subscriptions for both learning boxes
       responses:
         "200":
           description: Current subscription details or empty free-user state
@@ -103,6 +103,15 @@ paths:
       operationId: cancelCurrentSubscription
       tags: [practice]
       summary: Schedule cancellation at the end of the current trial or billing period
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [boxId]
+              properties:
+                boxId: { type: string, enum: [read_write, audio_first] }
       responses:
         "200":
           description: Cancellation scheduled without removing current access
@@ -335,7 +344,19 @@ paths:
     post:
       operationId: createPremiumCheckout
       tags: [practice]
-      summary: Create provider checkout after external billing setup
+      summary: Create a provider checkout for one independently billed learning box
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, plan, boxId]
+              properties:
+                provider: { type: string, enum: [stripe, razorpay] }
+                plan: { type: string, enum: [monthly, quarterly, yearly] }
+                boxId: { type: string, enum: [read_write, audio_first] }
+                country: { type: string }
       responses:
         "200": { description: Checkout created }
         "503": { description: Provider not configured }

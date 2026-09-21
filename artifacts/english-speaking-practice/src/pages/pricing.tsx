@@ -5,15 +5,14 @@ import { Sparkles, Check, Loader2, AlertCircle, ShieldCheck, Globe, LogOut } fro
 
 type RazorpayCheckoutData = {
   keyId: string;
-  trialOrderId: string;
+  subscriptionId: string;
   trialAmountPaise: number;
 };
 
 type RazorpayInstance = { open: () => void; on: (event: string, handler: (response: unknown) => void) => void };
 type RazorpayOptions = {
   key: string;
-  order_id: string;
-  amount: number;
+  subscription_id: string;
   currency: string;
   name: string;
   description: string;
@@ -21,6 +20,13 @@ type RazorpayOptions = {
   modal: { ondismiss: () => void };
   theme: { color: string };
 };
+
+type BoxId = 'read_write' | 'audio_first';
+
+const LEARNING_BOXES: Array<{ id: BoxId; label: string; description: string }> = [
+  { id: 'read_write', label: 'For Those Who Can Read & Write', description: 'Text-supported speaking, corrections, and lessons.' },
+  { id: 'audio_first', label: 'For Those Who Cannot Read & Write', description: 'Audio-first speaking and listening with minimal reading.' },
+];
 
 declare global {
   interface Window {
@@ -76,6 +82,7 @@ export function Pricing() {
   const queryClient = useQueryClient();
 
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'quarterly' | 'yearly'>('yearly');
+  const [selectedBox, setSelectedBox] = useState<BoxId>('read_write');
   const [selectedProvider, setSelectedProvider] = useState<'stripe' | 'razorpay' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -83,9 +90,14 @@ export function Pricing() {
   const plans = (plansData as any)?.plans || [];
   const paymentOptions = (paymentOptionsData as any)?.options || [];
 
-  const trialText = (plansData as any)?.trial || "Create your account for just ₹5 and get a 2-day free trial.";
+  const trialText = (plansData as any)?.trial || "Start with 2 days of full access to both learning boxes. No trial charge.";
 
-  const subscription = subData as any;
+  const subscriptions = (subData as any)?.subscriptions || [];
+  const subscription = subscriptions.find((item: any) => item.boxId === selectedBox);
+  const activeTrialEndsAt = (subData as any)?.activeTrialEndsAt;
+  const trialUsed = Boolean((subData as any)?.trialUsed);
+  const trialAvailableToday = !trialUsed || (activeTrialEndsAt && new Date(activeTrialEndsAt).getTime() > Date.now());
+  const selectedPlanAmount = selectedPlan === 'monthly' ? '₹349' : selectedPlan === 'quarterly' ? '₹899' : '₹2,999';
   const isSubscribed = subscription && ['active', 'trialing', 'cancel_pending'].includes(subscription.status);
 
   const handleCheckout = () => {
@@ -95,7 +107,7 @@ export function Pricing() {
     }
     
     setError(null);
-     checkout.mutate({ plan: selectedPlan, provider: selectedProvider, country: selectedCountry }, {
+     checkout.mutate({ data: { plan: selectedPlan, provider: selectedProvider, boxId: selectedBox, country: selectedCountry } }, {
       onSuccess: (data: any) => {
          if (selectedProvider === 'stripe' && data?.checkoutUrl) {
            window.location.href = data.checkoutUrl;
@@ -106,7 +118,7 @@ export function Pricing() {
            return;
          }
          const razorpayData = data as RazorpayCheckoutData;
-         if (!razorpayData?.keyId || !razorpayData.trialOrderId || razorpayData.trialAmountPaise !== 500) {
+         if (!razorpayData?.keyId || !razorpayData.subscriptionId || razorpayData.trialAmountPaise !== 0) {
            setError('Razorpay checkout did not return valid payment details.');
            return;
          }
@@ -114,13 +126,12 @@ export function Pricing() {
            if (!window.Razorpay) throw new Error('Razorpay checkout is unavailable.');
            const razorpay = new window.Razorpay({
              key: razorpayData.keyId,
-             order_id: razorpayData.trialOrderId,
-             amount: 500,
+              subscription_id: razorpayData.subscriptionId,
              currency: 'INR',
              name: 'Rllora AI',
-             description: '₹5 2-Day Premium Trial',
+              description: `${LEARNING_BOXES.find((box) => box.id === selectedBox)?.label} subscription`,
              handler: () => {
-               setError('Payment submitted. Premium access will appear after Razorpay confirms the payment.');
+                setError('Subscription submitted. Access will appear after Razorpay confirms the authorization.');
                queryClient.invalidateQueries({ queryKey: ['/api/subscription'] });
              },
              modal: {
@@ -143,7 +154,7 @@ export function Pricing() {
 
   const handleCancel = () => {
     setError(null);
-    cancelSub.mutate(undefined, {
+    cancelSub.mutate({ data: { boxId: selectedBox } }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['/api/session'] });
         queryClient.invalidateQueries({ queryKey: ['/api/subscription'] });
@@ -171,7 +182,32 @@ export function Pricing() {
         {/* Features & Plans */}
         <div className="flex flex-col gap-8">
           <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-            <h3 className="font-semibold text-[16px] mb-4">Select a plan</h3>
+            <h3 className="font-semibold text-[16px] mb-4">Choose a learning box</h3>
+            <div className="space-y-3">
+              {LEARNING_BOXES.map((box) => (
+                <button
+                  key={box.id}
+                  onClick={() => {
+                    setSelectedBox(box.id);
+                    setShowCancelConfirm(false);
+                    setError(null);
+                  }}
+                  className={`w-full rounded-2xl border p-4 text-left transition-all ${
+                    selectedBox === box.id ? 'border-primary bg-primary/5 shadow-[0_0_0_1px_hsl(var(--primary))]' : 'border-border hover:bg-muted/50'
+                  }`}
+                >
+                  <span className="block text-[15px] font-semibold">{box.label}</span>
+                  <span className="mt-1 block text-[13px] leading-relaxed text-muted-foreground">{box.description}</span>
+                </button>
+              ))}
+            </div>
+            <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
+              Each box has its own subscription. Your first 2-day trial unlocks both boxes.
+            </p>
+          </div>
+
+          <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+            <h3 className="font-semibold text-[16px] mb-4">Select a plan for this box</h3>
             <div className="space-y-3">
               {plans.map((plan: any) => (
                 <button
@@ -225,7 +261,8 @@ export function Pricing() {
               </div>
             ) : isSubscribed ? (
               <div>
-                <h3 className="font-semibold text-[16px] mb-6">Manage Subscription</h3>
+                <h3 className="font-semibold text-[16px] mb-2">Manage Subscription</h3>
+                <p className="mb-6 text-[13px] font-medium text-muted-foreground">{LEARNING_BOXES.find((box) => box.id === selectedBox)?.label}</p>
                 <div className="rounded-2xl bg-secondary/50 p-5 mb-6">
                   <div className="flex items-center justify-between mb-4 pb-4 border-b border-border">
                     <span className="text-[14px] font-medium text-muted-foreground">Current Plan</span>
@@ -353,10 +390,12 @@ export function Pricing() {
                 <div className="border-t border-border pt-6">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[14px] font-medium text-muted-foreground">Today's total</span>
-                    <span className="font-semibold text-2xl">₹5</span>
+                    <span className="font-semibold text-2xl">{trialAvailableToday ? '₹0' : selectedPlanAmount}</span>
                   </div>
                   <p className="text-[13px] text-muted-foreground mb-6">
-                    After your 2-day trial, you will be charged the monthly rate. Cancel anytime.
+                    {trialAvailableToday
+                      ? 'After your shared 2-day trial, you will be charged for this box and billing period. Cancel anytime.'
+                      : 'Your shared trial has already been used. This box will start its paid billing period today.'}
                   </p>
 
                   {error && (
@@ -372,7 +411,7 @@ export function Pricing() {
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-4 text-[15px] font-medium text-primary-foreground shadow-[0_4px_14px_hsl(var(--primary)/.25)] hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {checkout.isPending && <Loader2 size={16} className="animate-spin" />}
-                    Start 2-Day Free Trial – ₹5
+                    {trialAvailableToday ? 'Continue with Free Trial' : `Subscribe for ${selectedPlanAmount}`}
                   </button>
                   
                   <div className="mt-4 flex items-center justify-center gap-1.5 text-[13px] font-medium text-muted-foreground/60">

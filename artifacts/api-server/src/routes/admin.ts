@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response, type NextFunction } 
 import { clerkClient } from "@clerk/express";
 import { pool } from "@workspace/db";
 import { authenticatedClerkUserId } from "../lib/session";
+import { grantSharedTrial } from "../lib/boxSubscriptions";
 
 const router: IRouter = Router();
 const OWNER_EMAIL = "hello@rllora.com";
@@ -200,7 +201,9 @@ router.post("/admin/users/:userId/manual-trial", requireOwner, async (req, res) 
     res.status(409).json({ error: "Trial access cannot be changed because the user is missing or has provider-managed billing." });
     return;
   }
-  res.json({ entitlement: result.rows[0] });
+  const trialEndsAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  await grantSharedTrial(String(req.params.userId), trialEndsAt);
+  res.json({ entitlement: result.rows[0], boxes: ["read_write", "audio_first"], trialEndsAt: trialEndsAt.toISOString() });
 });
 
 router.delete("/admin/users/:userId/manual-trial", requireOwner, async (req, res) => {
@@ -220,18 +223,24 @@ router.delete("/admin/users/:userId/manual-trial", requireOwner, async (req, res
     res.status(409).json({ error: "Only an active manually granted trial can be revoked here." });
     return;
   }
+  await pool.query(
+    `DELETE FROM box_subscriptions
+     WHERE user_id = $1 AND plan = 'trial' AND status = 'trialing'
+       AND provider IS NULL AND provider_subscription_id IS NULL AND pending_payment_id IS NULL`,
+    [req.params.userId],
+  );
   res.status(204).send();
 });
 
 router.get("/admin/billing", requireOwner, async (_req, res) => {
   const [subscriptions, events] = await Promise.all([
     pool.query(
-      `SELECT u.id AS user_id, u.clerk_user_id, e.plan, e.status, e.provider, e.selected_plan,
-              e.trial_ends_at, e.current_period_ends_at, e.provider_customer_id,
-              e.provider_subscription_id, e.pending_payment_id
-       FROM entitlements e JOIN users u ON u.id = e.user_id
-       WHERE e.provider IS NOT NULL OR e.status <> 'active' OR e.plan <> 'free'
-       ORDER BY COALESCE(e.trial_ends_at, e.current_period_ends_at) DESC NULLS LAST
+      `SELECT u.id AS user_id, u.clerk_user_id, b.box_id, b.plan, b.status, b.provider, b.selected_plan,
+               b.trial_ends_at, b.current_period_ends_at, b.provider_customer_id,
+               b.provider_subscription_id, b.pending_payment_id
+        FROM box_subscriptions b JOIN users u ON u.id = b.user_id
+        WHERE b.provider IS NOT NULL OR b.status <> 'inactive' OR b.plan <> 'free'
+        ORDER BY COALESCE(b.trial_ends_at, b.current_period_ends_at) DESC NULLS LAST
        LIMIT 200`,
     ),
     pool.query("SELECT id, provider, event_type, processed_at FROM billing_events ORDER BY processed_at DESC LIMIT 100"),

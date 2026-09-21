@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import type { Request, Response } from "express";
 import { pool } from "@workspace/db";
 import { getAuth } from "@clerk/express";
+import { effectiveBoxStatus } from "./boxSubscriptions";
 
 const COOKIE_NAME = "rllora_session";
 if (!process.env.SESSION_SECRET && process.env.NODE_ENV !== "test") {
@@ -98,6 +99,21 @@ async function mergeDeviceProfile(clerkUserId: string, deviceUserId: string): Pr
         [accountId, deviceUserId],
       );
       await client.query("DELETE FROM lesson_progress WHERE user_id = $1", [deviceUserId]);
+      await client.query(
+        `INSERT INTO box_subscriptions (
+           user_id, box_id, plan, status, trial_ends_at, current_period_ends_at,
+           provider, provider_customer_id, provider_subscription_id, pending_payment_id, selected_plan
+         )
+         SELECT $1, box_id, plan, status, trial_ends_at, current_period_ends_at,
+           provider, provider_customer_id, provider_subscription_id, pending_payment_id, selected_plan
+         FROM box_subscriptions WHERE user_id = $2
+         ON CONFLICT (user_id, box_id) DO NOTHING`,
+        [accountId, deviceUserId],
+      );
+      await client.query(
+        "DELETE FROM box_subscriptions WHERE user_id = $1 AND provider_subscription_id IS NULL AND pending_payment_id IS NULL",
+        [deviceUserId],
+      );
       const source = (await client.query("SELECT * FROM entitlements WHERE user_id = $1", [deviceUserId])).rows[0];
       const target = (await client.query("SELECT * FROM entitlements WHERE user_id = $1", [accountId])).rows[0];
       const sourceOwnsBilling = Boolean(source?.provider_subscription_id || source?.pending_payment_id);
@@ -166,6 +182,24 @@ export function words(value: string) {
 }
 
 export async function entitlement(userId: string) {
+  const boxRows = await pool.query(
+    `SELECT * FROM box_subscriptions
+     WHERE user_id = $1
+     ORDER BY
+       CASE status WHEN 'active' THEN 0 WHEN 'trialing' THEN 1 WHEN 'cancel_pending' THEN 2 ELSE 3 END,
+       COALESCE(current_period_ends_at, trial_ends_at) DESC NULLS LAST`,
+    [userId],
+  );
+  const activeBox = boxRows.rows
+    .map((row) => effectiveBoxStatus(row))
+    .find((row) => row.effectivePlan !== "free");
+  if (activeBox) {
+    return {
+      ...activeBox,
+      plan: "premium",
+      effectivePlan: "premium",
+    };
+  }
   const result = await pool.query("SELECT * FROM entitlements WHERE user_id = $1", [userId]);
   const row = result.rows[0];
   if (!row) return { plan: "free", status: "active", effectivePlan: "free", effectiveStatus: "active" };
