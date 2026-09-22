@@ -71,7 +71,7 @@ export function Welcome() {
             <div className="space-y-7 text-left">
               {boxes.map((box) => (
                 <div key={box.id}>
-                  <h3 className="mb-3 text-xl font-bold">{box.label}</h3>
+                  <h3 className="mb-3 text-center text-xl font-bold">{box.label}</h3>
                   <div className="grid gap-4 md:grid-cols-3">
                     {(boxPlans[box.id] || []).map((plan: any) => (
                       <div key={plan.id} className={`rounded-2xl border p-5 ${plan.bestValue ? 'border-primary bg-primary/5' : 'border-border bg-background'}`}>

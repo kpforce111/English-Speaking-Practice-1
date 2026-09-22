@@ -147,7 +147,7 @@ export function Pricing() {
                     }}
                     className="w-full text-left"
                   >
-                    <span className="block text-[15px] font-semibold">{box.label}</span>
+                    <span className="block text-center text-[15px] font-semibold">{box.label}</span>
                     <span className="mt-1 block text-[13px] leading-relaxed text-muted-foreground">{box.description}</span>
                   </button>
                   <div className="mt-4 grid gap-2 sm:grid-cols-3">
