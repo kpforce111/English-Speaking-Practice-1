@@ -50,7 +50,7 @@ export function Pricing() {
   const [error, setError] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
-  const plans = (plansData as any)?.plans || [];
+  const boxPlans = (plansData as any)?.boxPlans;
   const paymentOptions = (paymentOptionsData as any)?.options || [];
   const paymentNote = (paymentOptionsData as any)?.note || '';
 
@@ -61,7 +61,8 @@ export function Pricing() {
   const activeTrialEndsAt = (subData as any)?.activeTrialEndsAt;
   const trialUsed = Boolean((subData as any)?.trialUsed);
   const trialAvailableToday = !trialUsed || (activeTrialEndsAt && new Date(activeTrialEndsAt).getTime() > Date.now());
-  const selectedPlanAmount = selectedPlan === 'monthly' ? '₹349' : selectedPlan === 'quarterly' ? '₹899' : '₹2,999';
+  const selectedPlanData = boxPlans?.[selectedBox]?.find((plan: any) => plan.id === selectedPlan);
+  const selectedPlanAmount = selectedPlanData ? `₹${(selectedPlanData.amountPaise / 100).toLocaleString('en-IN')}` : '—';
   const isSubscribed = subscription && ['active', 'trialing', 'cancel_pending'].includes(subscription.status);
 
   const handleAction = () => {
@@ -129,7 +130,7 @@ export function Pricing() {
         <div className="flex flex-col gap-8">
           <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
             <h3 className="font-semibold text-[16px] mb-2">Separate plans for both learning boxes</h3>
-            <p className="mb-5 text-[13px] leading-relaxed text-muted-foreground">Select the box and billing plan you want after the shared trial. Existing plans and prices remain unchanged.</p>
+            <p className="mb-5 text-[13px] leading-relaxed text-muted-foreground">Select the box and billing plan you want after the shared trial. Each box has its own prices.</p>
             <div className="grid gap-5">
               {LEARNING_BOXES.map((box) => (
                 <section
@@ -150,7 +151,7 @@ export function Pricing() {
                     <span className="mt-1 block text-[13px] leading-relaxed text-muted-foreground">{box.description}</span>
                   </button>
                   <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                    {plans.map((plan: any) => (
+                    {(boxPlans?.[box.id] || []).map((plan: any) => (
                       <button
                         key={`${box.id}-${plan.id}`}
                         onClick={() => {
@@ -167,7 +168,7 @@ export function Pricing() {
                       >
                         {plan.bestValue && <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-secondary">Best value</span>}
                         <span className="block text-[12px] font-semibold capitalize">{plan.id}</span>
-                        <span className="mt-1 block text-[13px] font-bold">{plan.id === 'monthly' ? '₹349' : plan.id === 'quarterly' ? '₹899' : '₹2,999'}</span>
+                        <span className="mt-1 block text-[13px] font-bold">{`₹${(plan.amountPaise / 100).toLocaleString('en-IN')}`}</span>
                       </button>
                     ))}
                   </div>
@@ -356,7 +357,7 @@ export function Pricing() {
 
                   <button
                     onClick={handleAction}
-                    disabled={startTrial.isPending || checkout.isPending || (!trialAvailableToday && !selectedProvider)}
+                    disabled={startTrial.isPending || checkout.isPending || (!trialAvailableToday && (!selectedProvider || !selectedPlanData))}
                     className={`${trialAvailableToday ? 'brand-gradient-button' : 'bg-primary text-primary-foreground hover:bg-primary/90'} flex w-full items-center justify-center gap-2 rounded-xl px-6 py-4 text-[15px] font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     {(startTrial.isPending || checkout.isPending) && <Loader2 size={16} className="animate-spin" />}

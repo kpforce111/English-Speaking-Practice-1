@@ -53,18 +53,18 @@
   --input: 229 30% 88%;
   --ring: 231 83% 59%;
   --card: 0 0% 100%;
-  --card-foreground: 260 50% 15%;
-  --card-border: 45 20% 90%;
+  --card-foreground: 232 58% 14%;
+  --card-border: 229 30% 90%;
   --popover: 0 0% 100%;
-  --popover-foreground: 260 50% 15%;
-  --popover-border: 45 20% 90%;
+  --popover-foreground: 232 58% 14%;
+  --popover-border: 229 30% 90%;
   --primary: 231 83% 59%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 269 82% 58%;
+  --secondary: 200 88% 41%;
   --secondary-foreground: 0 0% 100%;
   --muted: 230 45% 95%;
   --muted-foreground: 236 20% 43%;
-  --accent: 269 82% 58%;
+  --accent: 200 88% 41%;
   --accent-foreground: 0 0% 100%;
   --destructive: 354 70% 56%;
   --destructive-foreground: 0 0% 100%;
@@ -73,9 +73,9 @@
   --sidebar-border: 238 48% 25%;
   --sidebar-primary: 231 83% 59%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 269 55% 28%;
+  --sidebar-accent: 212 66% 26%;
   --sidebar-accent-foreground: 228 60% 98%;
-  --sidebar-ring: 269 82% 58%;
+  --sidebar-ring: 200 88% 41%;
   --app-font-sans: 'Inter', sans-serif;
   --app-font-serif: 'Inter', sans-serif;
   --app-font-mono: 'Inter', sans-serif;
@@ -98,11 +98,11 @@
   --popover-border: 237 42% 20%;
   --primary: 231 90% 68%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 269 85% 68%;
+  --secondary: 191 92% 56%;
   --secondary-foreground: 0 0% 100%;
   --muted: 236 40% 17%;
   --muted-foreground: 232 24% 72%;
-  --accent: 269 85% 68%;
+  --accent: 191 92% 56%;
   --accent-foreground: 0 0% 100%;
   --destructive: 354 60% 62%;
   --destructive-foreground: 0 0% 100%;
@@ -111,9 +111,9 @@
   --sidebar-border: 237 42% 20%;
   --sidebar-primary: 231 90% 68%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 269 55% 24%;
+  --sidebar-accent: 212 66% 24%;
   --sidebar-accent-foreground: 228 60% 96%;
-  --sidebar-ring: 269 85% 68%;
+  --sidebar-ring: 191 92% 56%;
 }
 
 @layer base {
@@ -195,19 +195,19 @@
   height: 2.25rem;
   border-radius: .8rem;
   color: hsl(var(--primary-foreground));
-  background: linear-gradient(135deg, #1689ff 0%, #3157e8 45%, #a432f2 100%);
+  background: linear-gradient(135deg, #20d5ed 0%, #1689ff 45%, #1746be 100%);
   box-shadow: 0 7px 18px hsl(var(--primary) / .22);
 }
 
 .brand-gradient-button {
   color: white;
-  background: linear-gradient(110deg, #1689ff 0%, #3157e8 45%, #a432f2 100%);
-  box-shadow: 0 10px 28px rgb(49 87 232 / .28);
+  background: linear-gradient(110deg, #1689ff 0%, #1666d8 55%, #123fbd 100%);
+  box-shadow: 0 10px 28px rgb(22 102 216 / .28);
 }
 
 .brand-gradient-button:hover {
   filter: saturate(1.08) brightness(1.04);
-  box-shadow: 0 13px 34px rgb(111 57 220 / .34);
+  box-shadow: 0 13px 34px rgb(22 102 216 / .34);
 }
 
 .chat-scroll {

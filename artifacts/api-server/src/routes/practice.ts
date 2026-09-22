@@ -23,10 +23,20 @@ const connectors = new ReplitConnectors();
 const scenarios = ["job-interview", "office", "shopping", "travel", "doctor", "customer-service", "bpo", "daily-life"] as const;
 const levels = ["beginner", "intermediate", "advanced"] as const;
 const plans = {
-  monthly: { amountPaise: 34900, label: "Monthly: ₹349/month — cancel anytime." },
-  quarterly: { amountPaise: 89900, label: "Quarterly: ₹899 / 3 months (Save 14%) — cancel anytime." },
-  yearly: { amountPaise: 299900, label: "Yearly: ₹2,999 / 12 months (Save 37%, Best Value) — cancel anytime." },
+  start_zero: {
+    monthly: { amountPaise: 34900, label: "Monthly: ₹349/month — cancel anytime." },
+    quarterly: { amountPaise: 89900, label: "Quarterly: ₹899 / 3 months (Save 14%) — cancel anytime." },
+    yearly: { amountPaise: 299900, label: "Yearly: ₹2,999 / 12 months (Save 37%, Best Value) — cancel anytime." },
+  },
+  advanced: {
+    monthly: { amountPaise: 39900, label: "Monthly: ₹399/month — cancel anytime." },
+    quarterly: { amountPaise: 99900, label: "Quarterly: ₹999 / 3 months — cancel anytime." },
+    yearly: { amountPaise: 349900, label: "Yearly: ₹3,499 / 12 months (Best Value) — cancel anytime." },
+  },
 } as const;
+
+const listPlans = (boxId: keyof typeof plans) =>
+  Object.entries(plans[boxId]).map(([id, value]) => ({ id, ...value, bestValue: id === "yearly" }));
 
 function activePaymentGateway() {
   const gateway = String(process.env.PAYMENT_GATEWAY || "inactive").trim().toLowerCase();
@@ -396,7 +406,8 @@ router.get("/weekly-report", async (req, res) => {
 router.get("/plans", (_req, res) => res.json({
   trial: "Start with 2 days of full access to both learning products. No trial charge.",
   boxes: Object.values(learningBoxes),
-  plans: Object.entries(plans).map(([id, value]) => ({ id, ...value, bestValue: id === "yearly" })),
+  plans: listPlans("start_zero"),
+  boxPlans: { start_zero: listPlans("start_zero"), advanced: listPlans("advanced") },
   features: ["Voice Conversation (15 minutes per day)", "Real-Time Correction", "Translation", "Pronunciation + Fluency Score", "Roleplays", "Daily Lessons", "Progress Tracking", "Weekly Report", "Strict Mode and Soft Mode"],
 }));
 
@@ -417,7 +428,7 @@ router.post("/checkout", async (req, res) => {
   const gateway = activePaymentGateway();
   const boxId = parseLearningBoxId(req.body?.boxId);
   if (!boxId) { res.status(400).json({ error: "boxId must be start_zero or advanced" }); return; }
-  if (!plans[plan as keyof typeof plans]) { res.status(400).json({ error: "plan must be monthly, quarterly, or yearly" }); return; }
+  if (!(plan in plans[boxId])) { res.status(400).json({ error: "plan must be monthly, quarterly, or yearly" }); return; }
   if (gateway === "inactive") {
     res.status(503).json({ error: "Payments are temporarily unavailable while PhonePe approval is pending.", code: "PAYMENTS_INACTIVE" });
     return;

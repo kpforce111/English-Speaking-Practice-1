@@ -2,21 +2,27 @@ import { ArrowRight, Mic, Sparkles, BookOpen, Headphones } from 'lucide-react';
 import { Link } from 'wouter';
 import { useListPremiumPlans } from '@workspace/api-client-react';
 
-const fallbackPlans = [
-  { id: 'monthly', label: 'Monthly', price: '₹349', detail: 'per month' },
-  { id: 'quarterly', label: 'Quarterly', price: '₹899', detail: 'every 3 months · Save 14%' },
-  { id: 'yearly', label: 'Yearly', price: '₹2,999', detail: 'every 12 months · Save 37%' },
-];
+const boxes = [
+  { id: 'start_zero', label: '0 English / Start from Zero' },
+  { id: 'advanced', label: 'Advanced English Coach' },
+] as const;
 
-function planInfo(plan: { id: string; label?: string }) {
-  if (plan.id === 'monthly') return { ...plan, label: 'Monthly', price: '₹349', detail: 'per month' };
-  if (plan.id === 'quarterly') return { ...plan, label: 'Quarterly', price: '₹899', detail: 'every 3 months · Save 14%' };
-  return { ...plan, label: 'Yearly', price: '₹2,999', detail: 'every 12 months · Save 37%', bestValue: true };
-}
+const fallbackBoxPlans = {
+  start_zero: [
+    { id: 'monthly', amountPaise: 34900 },
+    { id: 'quarterly', amountPaise: 89900 },
+    { id: 'yearly', amountPaise: 299900, bestValue: true },
+  ],
+  advanced: [
+    { id: 'monthly', amountPaise: 39900 },
+    { id: 'quarterly', amountPaise: 99900 },
+    { id: 'yearly', amountPaise: 349900, bestValue: true },
+  ],
+};
 
 export function Welcome() {
   const { data } = useListPremiumPlans();
-  const plans = ((data as any)?.plans?.length ? (data as any).plans.map(planInfo) : fallbackPlans);
+  const boxPlans = (data as any)?.boxPlans || fallbackBoxPlans;
 
   return (
     <main className="practice-page min-h-[100dvh] px-5 py-8 md:px-10 md:py-12">
@@ -60,16 +66,23 @@ export function Welcome() {
           <div className="mt-12 border-t border-border pt-8 text-center">
             <div className="mb-8">
               <h2 className="text-2xl font-bold">What happens after your 2-day trial?</h2>
-              <p className="mt-2 text-lg font-medium text-muted-foreground">Each box has its own subscription. Choose the one that fits you best.</p>
+              <p className="mt-2 text-lg font-medium text-muted-foreground">Each box has its own subscription and prices. Choose the one that fits you best.</p>
             </div>
-            <div className="grid gap-4 md:grid-cols-3 text-left">
-              {plans.map((plan: any) => (
-                <div key={plan.id} className={`rounded-2xl border p-5 ${plan.bestValue ? 'border-primary bg-primary/5' : 'border-border bg-background'}`}>
-                  {plan.bestValue && <p className="mb-2 text-sm font-bold uppercase tracking-wide text-primary">Best value</p>}
-                  <h3 className="text-xl font-bold">{plan.label}</h3>
-                  <p className="mt-3 text-3xl font-bold">{plan.price}</p>
-                  <p className="mt-1 text-base font-semibold text-muted-foreground">{plan.detail}</p>
-                  <p className="mt-5 text-sm font-medium text-foreground">Full Premium access to your chosen learning box.</p>
+            <div className="space-y-7 text-left">
+              {boxes.map((box) => (
+                <div key={box.id}>
+                  <h3 className="mb-3 text-xl font-bold">{box.label}</h3>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    {(boxPlans[box.id] || []).map((plan: any) => (
+                      <div key={plan.id} className={`rounded-2xl border p-5 ${plan.bestValue ? 'border-primary bg-primary/5' : 'border-border bg-background'}`}>
+                        {plan.bestValue && <p className="mb-2 text-sm font-bold uppercase tracking-wide text-primary">Best value</p>}
+                        <h3 className="text-xl font-bold capitalize">{plan.id}</h3>
+                        <p className="mt-3 text-3xl font-bold">₹{(plan.amountPaise / 100).toLocaleString('en-IN')}</p>
+                        <p className="mt-1 text-base font-semibold text-muted-foreground">{plan.id === 'monthly' ? 'per month' : plan.id === 'quarterly' ? 'every 3 months' : 'every 12 months'}</p>
+                        <p className="mt-5 text-sm font-medium text-foreground">Full Premium access to {box.label}.</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>

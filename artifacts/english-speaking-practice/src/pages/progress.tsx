@@ -55,10 +55,10 @@ function ProgressDashboard() {
           bg="bg-blue-500/10"
         />
         <StatCard 
-          icon={<Clock className="text-purple-500" />} 
+          icon={<Clock className="text-secondary" />} 
           label="Minutes" 
           value={progress.practiceMinutes || 0} 
-          bg="bg-purple-500/10"
+          bg="bg-secondary/10"
         />
         <StatCard 
           icon={<Flame className="text-secondary" />} 
