@@ -1,4 +1,4 @@
-modules = ["nodejs-24", "python-base-3.13", "postgresql-16"]
+modules = ["nodejs-24"]
 
 [deployment]
 router = "application"
@@ -22,12 +22,9 @@ timeoutMs = 20000
 [userenv]
 
 [userenv.shared]
-AI_PRIMARY_MODEL = "gpt-5-nano"
-AI_SECONDARY_MODEL = "gpt-5.4-mini"
-
-[nix]
-channel = "stable-25_05"
-modules = ["nodejs-24", "python-base-3.13", "postgresql-16"]
+RAPIDAPI_LANGUAGE_CONFIDENCE_HOST = "scripted-speech-assessment1.p.rapidapi.com"
+RAPIDAPI_LANGUAGE_CONFIDENCE_URL = "https://scripted-speech-assessment1.p.rapidapi.com/speech-assessment/scripted/us"
+modules = ["nodejs-24"]
 
 [deployment]
 router = "application"
@@ -51,8 +48,5 @@ timeoutMs = 20000
 [userenv]
 
 [userenv.shared]
-AI_PRIMARY_MODEL = "gpt-5-nano"
-AI_SECONDARY_MODEL = "gpt-5.4-mini"
-
-[nix]
-channel = "stable-25_05"
+RAPIDAPI_LANGUAGE_CONFIDENCE_HOST = "scripted-speech-assessment1.p.rapidapi.com"
+RAPIDAPI_LANGUAGE_CONFIDENCE_URL = "https://scripted-speech-assessment1.p.rapidapi.com/speech-assessment/scripted/us"
