@@ -20,9 +20,6 @@ path = "scripts/post-merge.sh"
 timeoutMs = 20000
 modules = ["nodejs-24"]
 
-[deployment]
-router = "application"
-deploymentTarget = "autoscale"
 
 [deployment.postBuild]
 args = ["pnpm", "store", "prune"]
