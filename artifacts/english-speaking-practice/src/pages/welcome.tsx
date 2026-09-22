@@ -31,7 +31,7 @@ export function Welcome() {
               Choose your path to English fluency. Your free trial gives you access to both learning boxes for 2 days.
             </p>
 
-            <Link href="/sign-up?redirect_url=/pricing" className="mx-auto mt-7 flex w-full max-w-xl flex-col items-center justify-center rounded-2xl bg-primary px-6 py-4 text-primary-foreground shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl">
+            <Link href="/sign-up?redirect_url=/pricing" className="brand-gradient-button mx-auto mt-7 flex w-full max-w-xl flex-col items-center justify-center rounded-2xl px-6 py-4 shadow-lg transition-all hover:-translate-y-0.5">
               <span className="text-lg font-extrabold md:text-xl">Create Account &amp; Start Free Trial</span>
               <span className="mt-1 text-base font-semibold opacity-90">Get both learning boxes for 2 days</span>
             </Link>
@@ -74,8 +74,8 @@ export function Welcome() {
               ))}
             </div>
           </div>
-          <div className="mt-8 overflow-x-auto rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-center text-amber-950 dark:border-amber-900/50 dark:bg-amber-900/10 dark:text-amber-200">
-            <p className="min-w-max text-base font-bold md:text-lg">If not satisfied, cancel before trial ends to avoid auto-payment.</p>
+          <div className="mt-8 overflow-x-auto rounded-2xl border border-secondary/20 bg-secondary/5 px-5 py-4 text-center text-foreground">
+            <p className="min-w-max text-base font-bold md:text-lg">No payment method is collected for the trial. Subscribe to one box only if you choose to continue.</p>
           </div>
         </div>
       </section>

@@ -113,9 +113,9 @@ export function StartFromZeroPractice() {
             </div>
           )}
           {showFeedback === 'fail' && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in zoom-in duration-300 text-amber-500">
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in zoom-in duration-300 text-secondary">
               <XCircle size={100} />
-              <h2 className="mt-4 text-3xl font-extrabold text-amber-600">Try Again Later</h2>
+              <h2 className="mt-4 text-3xl font-extrabold text-secondary">Try Again Later</h2>
             </div>
           )}
 

@@ -204,7 +204,7 @@ function VoicePractice() {
                   </div>
                 )}
                 {pronunciationError && (
-                  <div className="mt-1 text-[11px] text-amber-600 bg-amber-500/10 px-2 py-1.5 rounded-lg text-right">
+                  <div className="mt-1 text-[11px] text-secondary bg-secondary/10 px-2 py-1.5 rounded-lg text-right">
                     {pronunciationError}
                   </div>
                 )}

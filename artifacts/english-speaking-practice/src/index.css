@@ -47,35 +47,35 @@
 }
 
 :root {
-  --background: 45 40% 98%;
-  --foreground: 260 50% 15%;
-  --border: 45 20% 85%;
-  --input: 45 20% 85%;
-  --ring: 25 90% 55%;
+  --background: 228 60% 98%;
+  --foreground: 232 58% 14%;
+  --border: 229 30% 88%;
+  --input: 229 30% 88%;
+  --ring: 231 83% 59%;
   --card: 0 0% 100%;
   --card-foreground: 260 50% 15%;
   --card-border: 45 20% 90%;
   --popover: 0 0% 100%;
   --popover-foreground: 260 50% 15%;
   --popover-border: 45 20% 90%;
-  --primary: 25 90% 55%;
+  --primary: 231 83% 59%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 260 50% 25%;
+  --secondary: 269 82% 58%;
   --secondary-foreground: 0 0% 100%;
-  --muted: 45 20% 94%;
-  --muted-foreground: 260 20% 45%;
-  --accent: 25 90% 55%;
+  --muted: 230 45% 95%;
+  --muted-foreground: 236 20% 43%;
+  --accent: 269 82% 58%;
   --accent-foreground: 0 0% 100%;
   --destructive: 354 70% 56%;
   --destructive-foreground: 0 0% 100%;
-  --sidebar: 260 50% 15%;
-  --sidebar-foreground: 45 40% 98%;
-  --sidebar-border: 260 40% 25%;
-  --sidebar-primary: 25 90% 55%;
+  --sidebar: 233 62% 13%;
+  --sidebar-foreground: 228 60% 98%;
+  --sidebar-border: 238 48% 25%;
+  --sidebar-primary: 231 83% 59%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 260 40% 25%;
-  --sidebar-accent-foreground: 45 40% 98%;
-  --sidebar-ring: 25 90% 55%;
+  --sidebar-accent: 269 55% 28%;
+  --sidebar-accent-foreground: 228 60% 98%;
+  --sidebar-ring: 269 82% 58%;
   --app-font-sans: 'Inter', sans-serif;
   --app-font-serif: 'Inter', sans-serif;
   --app-font-mono: 'Inter', sans-serif;
@@ -85,35 +85,35 @@
 }
 
 .dark {
-  --background: 260 50% 10%;
-  --foreground: 45 40% 95%;
-  --border: 260 40% 20%;
-  --input: 260 40% 20%;
-  --ring: 25 90% 55%;
-  --card: 260 45% 14%;
-  --card-foreground: 45 40% 95%;
-  --card-border: 260 40% 20%;
-  --popover: 260 45% 14%;
-  --popover-foreground: 45 40% 95%;
-  --popover-border: 260 40% 20%;
-  --primary: 25 90% 55%;
-  --primary-foreground: 260 50% 10%;
-  --secondary: 260 40% 25%;
-  --secondary-foreground: 45 40% 95%;
-  --muted: 260 40% 18%;
-  --muted-foreground: 260 20% 70%;
-  --accent: 25 90% 55%;
-  --accent-foreground: 260 50% 10%;
+  --background: 233 62% 8%;
+  --foreground: 228 60% 96%;
+  --border: 237 42% 20%;
+  --input: 237 42% 20%;
+  --ring: 231 90% 68%;
+  --card: 234 56% 12%;
+  --card-foreground: 228 60% 96%;
+  --card-border: 237 42% 20%;
+  --popover: 234 56% 12%;
+  --popover-foreground: 228 60% 96%;
+  --popover-border: 237 42% 20%;
+  --primary: 231 90% 68%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 269 85% 68%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 236 40% 17%;
+  --muted-foreground: 232 24% 72%;
+  --accent: 269 85% 68%;
+  --accent-foreground: 0 0% 100%;
   --destructive: 354 60% 62%;
-  --destructive-foreground: 260 50% 10%;
-  --sidebar: 260 55% 8%;
-  --sidebar-foreground: 45 40% 95%;
-  --sidebar-border: 260 40% 20%;
-  --sidebar-primary: 25 90% 55%;
-  --sidebar-primary-foreground: 260 50% 10%;
-  --sidebar-accent: 260 40% 20%;
-  --sidebar-accent-foreground: 45 40% 95%;
-  --sidebar-ring: 25 90% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --sidebar: 233 68% 7%;
+  --sidebar-foreground: 228 60% 96%;
+  --sidebar-border: 237 42% 20%;
+  --sidebar-primary: 231 90% 68%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 269 55% 24%;
+  --sidebar-accent-foreground: 228 60% 96%;
+  --sidebar-ring: 269 85% 68%;
 }
 
 @layer base {
@@ -195,8 +195,19 @@
   height: 2.25rem;
   border-radius: .8rem;
   color: hsl(var(--primary-foreground));
-  background: hsl(var(--primary));
+  background: linear-gradient(135deg, #1689ff 0%, #3157e8 45%, #a432f2 100%);
   box-shadow: 0 7px 18px hsl(var(--primary) / .22);
+}
+
+.brand-gradient-button {
+  color: white;
+  background: linear-gradient(110deg, #1689ff 0%, #3157e8 45%, #a432f2 100%);
+  box-shadow: 0 10px 28px rgb(49 87 232 / .28);
+}
+
+.brand-gradient-button:hover {
+  filter: saturate(1.08) brightness(1.04);
+  box-shadow: 0 13px 34px rgb(111 57 220 / .34);
 }
 
 .chat-scroll {

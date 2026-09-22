@@ -129,7 +129,7 @@ export function StartFromZeroHome() {
         {overview.revision && overview.revision.length > 0 && (
           <div className="rounded-3xl border border-border bg-card p-6 shadow-sm md:p-8">
             <div className="flex items-center gap-3 mb-6">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/10 text-secondary">
                 <RotateCcw size={20} />
               </div>
               <div>

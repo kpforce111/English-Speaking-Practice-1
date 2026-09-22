@@ -121,7 +121,7 @@ function ScenarioChat({ scenarioId }: { scenarioId: string }) {
                     {msg.content}
                   </div>
                   {!isUser && msg.correction && (
-                    <div className="mt-2 rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 text-xs text-amber-700">
+                    <div className="mt-2 rounded-xl bg-secondary/10 border border-secondary/20 p-3 text-xs text-secondary">
                       <strong className="block mb-1">Correction:</strong>
                       {msg.correction}
                     </div>

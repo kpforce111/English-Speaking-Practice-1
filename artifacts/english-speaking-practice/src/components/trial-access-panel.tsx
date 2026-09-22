@@ -56,14 +56,14 @@ export function TrialAccessPanel({ boxName = "this learning box", onTrialStarted
             <button
               onClick={handleStartTrial}
               disabled={startTrial.isPending}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-lg font-bold text-primary-foreground shadow-lg transition-transform hover:-translate-y-0.5 hover:shadow-xl active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+              className="brand-gradient-button flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-lg font-bold shadow-lg transition-transform hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
             >
               {startTrial.isPending ? <Loader2 size={20} className="animate-spin" /> : <Play fill="currentColor" size={20} />}
               Start Free 2-Day Trial
             </button>
           ) : (
             <div className="space-y-4">
-              <Link href={`/sign-up?redirect_url=${encodeURIComponent(window.location.pathname)}`} className="flex w-full items-center justify-center rounded-2xl bg-primary px-6 py-4 text-lg font-bold text-primary-foreground shadow-lg transition-transform hover:-translate-y-0.5 hover:shadow-xl active:scale-95">
+              <Link href={`/sign-up?redirect_url=${encodeURIComponent(window.location.pathname)}`} className="brand-gradient-button flex w-full items-center justify-center rounded-2xl px-6 py-4 text-lg font-bold shadow-lg transition-transform hover:-translate-y-0.5 active:scale-95">
                 Create Account for Free Trial
               </Link>
               <Link href={`/sign-in?redirect_url=${encodeURIComponent(window.location.pathname)}`} className="flex w-full items-center justify-center rounded-2xl border-2 border-border bg-card px-6 py-3.5 text-base font-bold text-foreground transition-colors hover:bg-secondary">

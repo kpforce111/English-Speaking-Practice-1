@@ -61,10 +61,10 @@ function ProgressDashboard() {
           bg="bg-purple-500/10"
         />
         <StatCard 
-          icon={<Flame className="text-orange-500" />} 
+          icon={<Flame className="text-secondary" />} 
           label="Active Days" 
           value={progress.activeDays || 0} 
-          bg="bg-orange-500/10"
+          bg="bg-secondary/10"
         />
         <StatCard 
           icon={<Trophy className="text-emerald-500" />} 
@@ -108,14 +108,14 @@ function ProgressDashboard() {
                 </ul>
               </div>
               
-              <div className="rounded-2xl bg-amber-500/5 border border-amber-500/10 p-4">
-                <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <div className="rounded-2xl bg-secondary/5 border border-secondary/10 p-4">
+                <p className="text-xs font-bold text-secondary uppercase tracking-wider mb-3 flex items-center gap-2">
                   <Target size={14} /> Focus Areas
                 </p>
                 <ul className="space-y-2">
                   {(weekly?.focusAreas || []).length > 0 ? weekly!.focusAreas.map((item: string, i: number) => (
                     <li key={i} className="text-sm flex items-start gap-2">
-                      <span className="text-amber-500 mt-0.5">•</span> {item}
+                      <span className="text-secondary mt-0.5">•</span> {item}
                     </li>
                   )) : <li className="text-sm text-muted-foreground">Not enough data to determine focus areas.</li>}
                 </ul>

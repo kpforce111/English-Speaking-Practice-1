@@ -3,6 +3,7 @@ import { useListPremiumPlans, useListPaymentOptions, useCreatePremiumCheckout, u
 import { useQueryClient } from '@tanstack/react-query';
 import { Sparkles, Check, Loader2, AlertCircle, ShieldCheck, Globe, LogOut } from 'lucide-react';
 import { useLocation } from 'wouter';
+import { useAuth } from '@clerk/react';
 
 type BoxId = 'start_zero' | 'advanced';
 
@@ -41,6 +42,7 @@ export function Pricing() {
   const startTrial = useStartSharedTrial();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const { isSignedIn } = useAuth();
 
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'quarterly' | 'yearly'>('yearly');
   const [selectedBox, setSelectedBox] = useState<BoxId>('start_zero');
@@ -65,6 +67,10 @@ export function Pricing() {
   const handleAction = () => {
     setError(null);
     if (trialAvailableToday) {
+      if (!isSignedIn) {
+        setLocation('/sign-up?redirect_url=/pricing');
+        return;
+      }
       startTrial.mutate(undefined, {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetPracticeSessionQueryKey() });
@@ -122,59 +128,55 @@ export function Pricing() {
         {/* Features & Plans */}
         <div className="flex flex-col gap-8">
           <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-            <h3 className="font-semibold text-[16px] mb-4">Choose a learning box</h3>
-            <div className="space-y-3">
+            <h3 className="font-semibold text-[16px] mb-2">Separate plans for both learning boxes</h3>
+            <p className="mb-5 text-[13px] leading-relaxed text-muted-foreground">Select the box and billing plan you want after the shared trial. Existing plans and prices remain unchanged.</p>
+            <div className="grid gap-5">
               {LEARNING_BOXES.map((box) => (
-                <button
+                <section
                   key={box.id}
-                  onClick={() => {
-                    setSelectedBox(box.id);
-                    setShowCancelConfirm(false);
-                    setError(null);
-                  }}
-                  className={`w-full rounded-2xl border p-4 text-left transition-all ${
-                    selectedBox === box.id ? 'border-primary bg-primary/5 shadow-[0_0_0_1px_hsl(var(--primary))]' : 'border-border hover:bg-muted/50'
+                  className={`rounded-2xl border p-4 transition-all ${
+                    selectedBox === box.id ? 'border-primary bg-primary/5 shadow-[0_0_0_1px_hsl(var(--primary))]' : 'border-border bg-background'
                   }`}
                 >
-                  <span className="block text-[15px] font-semibold">{box.label}</span>
-                  <span className="mt-1 block text-[13px] leading-relaxed text-muted-foreground">{box.description}</span>
-                </button>
+                  <button
+                    onClick={() => {
+                      setSelectedBox(box.id);
+                      setShowCancelConfirm(false);
+                      setError(null);
+                    }}
+                    className="w-full text-left"
+                  >
+                    <span className="block text-[15px] font-semibold">{box.label}</span>
+                    <span className="mt-1 block text-[13px] leading-relaxed text-muted-foreground">{box.description}</span>
+                  </button>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                    {plans.map((plan: any) => (
+                      <button
+                        key={`${box.id}-${plan.id}`}
+                        onClick={() => {
+                          setSelectedBox(box.id);
+                          setSelectedPlan(plan.id);
+                          setShowCancelConfirm(false);
+                          setError(null);
+                        }}
+                        className={`relative rounded-xl border px-3 py-3 text-left transition-all ${
+                          selectedBox === box.id && selectedPlan === plan.id
+                            ? 'border-secondary bg-secondary/10'
+                            : 'border-border bg-card hover:border-primary/40'
+                        }`}
+                      >
+                        {plan.bestValue && <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-secondary">Best value</span>}
+                        <span className="block text-[12px] font-semibold capitalize">{plan.id}</span>
+                        <span className="mt-1 block text-[13px] font-bold">{plan.id === 'monthly' ? '₹349' : plan.id === 'quarterly' ? '₹899' : '₹2,999'}</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
             <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
               Each box has its own subscription. Your first 2-day trial unlocks both boxes.
             </p>
-          </div>
-
-          <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-            <h3 className="font-semibold text-[16px] mb-4">Select a plan for this box</h3>
-            <div className="space-y-3">
-              {plans.map((plan: any) => (
-                <button
-                  key={plan.id}
-                  onClick={() => setSelectedPlan(plan.id)}
-                  className={`relative flex w-full flex-col justify-center rounded-2xl border p-4 transition-all ${
-                    selectedPlan === plan.id 
-                      ? 'border-primary bg-primary/5 shadow-[0_0_0_1px_hsl(var(--primary))]' 
-                      : 'border-border bg-transparent hover:bg-muted/50'
-                  }`}
-                >
-                  {plan.bestValue && (
-                    <span className="absolute -top-3 left-4 rounded-full bg-accent px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider text-accent-foreground shadow-sm">
-                      Best Value
-                    </span>
-                  )}
-                  <div className="flex items-center gap-3 w-full">
-                    <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                      selectedPlan === plan.id ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/30'
-                    }`}>
-                      {selectedPlan === plan.id && <Check size={12} />}
-                    </div>
-                    <span className="font-medium text-left text-[14px]">{plan.label}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
           </div>
 
           <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
@@ -211,7 +213,7 @@ export function Pricing() {
                   <div className="flex items-center justify-between mb-4 pb-4 border-b border-border">
                     <span className="text-[14px] font-medium text-muted-foreground">Status</span>
                     <div className="flex items-center gap-2">
-                      <span className={`h-2 w-2 rounded-full ${subscription.cancelPending ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                      <span className={`h-2 w-2 rounded-full ${subscription.cancelPending ? 'bg-secondary' : 'bg-emerald-500'}`} />
                       <span className="font-medium text-[14px] text-foreground capitalize">
                         {subscription.cancelPending ? 'Cancels at Period End' : subscription.status}
                       </span>
@@ -228,9 +230,9 @@ export function Pricing() {
                 </div>
 
                 {subscription.cancelPending ? (
-                  <div className="rounded-xl bg-amber-500/10 p-4 text-center">
-                    <p className="text-[14px] text-amber-700 font-medium">Your subscription is scheduled to cancel.</p>
-                    <p className="text-[13px] text-amber-600 mt-1">You will retain access until the current period ends.</p>
+                  <div className="rounded-xl bg-secondary/10 p-4 text-center">
+                    <p className="text-[14px] text-secondary font-medium">Your subscription is scheduled to cancel.</p>
+                    <p className="text-[13px] text-secondary/80 mt-1">You will retain access until the current period ends.</p>
                   </div>
                 ) : showCancelConfirm ? (
                   <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-5 animate-in slide-in-from-top-2">
@@ -355,7 +357,7 @@ export function Pricing() {
                   <button
                     onClick={handleAction}
                     disabled={startTrial.isPending || checkout.isPending || (!trialAvailableToday && !selectedProvider)}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-4 text-[15px] font-medium text-primary-foreground shadow-[0_4px_14px_hsl(var(--primary)/.25)] hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className={`${trialAvailableToday ? 'brand-gradient-button' : 'bg-primary text-primary-foreground hover:bg-primary/90'} flex w-full items-center justify-center gap-2 rounded-xl px-6 py-4 text-[15px] font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     {(startTrial.isPending || checkout.isPending) && <Loader2 size={16} className="animate-spin" />}
                     {trialAvailableToday ? 'Continue with Free Trial' : `Subscribe for ${selectedPlanAmount}`}

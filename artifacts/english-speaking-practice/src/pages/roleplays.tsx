@@ -71,7 +71,7 @@ function RoleplaysList() {
                     </div>
                     <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-md ${
                       scenario.difficulty === 'Beginner' ? 'bg-emerald-500/10 text-emerald-600' :
-                      scenario.difficulty === 'Intermediate' ? 'bg-amber-500/10 text-amber-600' :
+                      scenario.difficulty === 'Intermediate' ? 'bg-secondary/10 text-secondary' :
                       'bg-rose-500/10 text-rose-600'
                     }`}>
                       {scenario.difficulty}

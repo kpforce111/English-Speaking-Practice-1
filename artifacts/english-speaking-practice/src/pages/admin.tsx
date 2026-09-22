@@ -158,7 +158,7 @@ function Dashboard() {
           {Object.entries(data.services).map(([name, ready]) => (
             <div key={name} className="flex items-center justify-between rounded-xl bg-muted/50 px-4 py-3">
               <span className="text-sm capitalize">{name.replace(/([A-Z])/g, ' $1')}</span>
-              <span className={`flex items-center gap-1 text-xs font-medium ${ready ? 'text-emerald-700' : 'text-amber-700'}`}>{ready ? <Check size={15} /> : <XCircle size={15} />}{ready ? 'Configured' : 'Setup needed'}</span>
+              <span className={`flex items-center gap-1 text-xs font-medium ${ready ? 'text-emerald-700' : 'text-secondary'}`}>{ready ? <Check size={15} /> : <XCircle size={15} />}{ready ? 'Configured' : 'Setup needed'}</span>
             </div>
           ))}
         </div>

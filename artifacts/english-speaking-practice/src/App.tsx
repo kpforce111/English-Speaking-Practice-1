@@ -42,7 +42,7 @@ const clerkAppearance = {
   theme: shadcn,
   cssLayerName: 'clerk',
   options: { logoPlacement: 'inside' as const, logoLinkUrl: basePath || '/', logoImageUrl: `${window.location.origin}${basePath}/logo.svg` },
-  variables: { colorPrimary: '#f48225', colorForeground: '#13243a', colorMutedForeground: '#5b546e', colorDanger: '#e53e3e', colorBackground: '#fefdfa', colorInput: '#eae6df', colorInputForeground: '#13243a', colorNeutral: '#d3cfc8', fontFamily: 'Inter, sans-serif', borderRadius: '1rem' },
+  variables: { colorPrimary: '#3157e8', colorForeground: '#11183d', colorMutedForeground: '#5c6280', colorDanger: '#e53e3e', colorBackground: '#f8f9ff', colorInput: '#e4e8f5', colorInputForeground: '#11183d', colorNeutral: '#d7dced', fontFamily: 'Inter, sans-serif', borderRadius: '1rem' },
   elements: { rootBox: 'w-full flex justify-center', cardBox: 'bg-white rounded-2xl w-[440px] max-w-full overflow-hidden border border-border', card: '!shadow-none !border-0 !bg-transparent !rounded-none', footer: '!shadow-none !border-0 !bg-transparent !rounded-none', headerTitle: 'text-foreground', headerSubtitle: 'text-muted-foreground', socialButtonsBlockButtonText: 'text-[14px] font-medium text-foreground', formFieldLabel: 'text-[13px] font-medium text-foreground', footerActionLink: 'text-primary', footerActionText: 'text-muted-foreground', dividerText: 'text-muted-foreground', identityPreviewEditButton: 'text-primary', formFieldSuccessText: 'text-emerald-700', alertText: 'text-[13px] text-destructive', logoBox: 'h-12', logoImage: 'h-12 w-auto', socialButtonsBlockButton: 'border-border', formButtonPrimary: 'bg-primary text-[14px] font-medium text-primary-foreground', formFieldInput: 'bg-secondary text-[15px] text-foreground border-border', footerAction: 'bg-transparent', dividerLine: 'bg-border', alert: 'border-destructive/30', otpCodeFieldInput: 'border-border', formFieldRow: 'text-foreground', main: 'text-foreground' },
 };
 
@@ -80,35 +80,8 @@ function SignUpPage() {
   const redirectUrl = safeAuthRedirect();
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-background lg:flex-row">
-      <div className="flex flex-1 flex-col justify-center p-8 bg-primary/5 lg:p-16">
-        <div className="max-w-md mx-auto space-y-6">
-          <h1 className="text-[18px] font-semibold text-foreground md:text-[20px]">
-            Welcome to Rllora AI English Speaking!
-          </h1>
-          <p className="text-[16px] text-foreground leading-[1.6]">
-            Create your account and get both learning boxes free for 2 days.
-          </p>
-          <ul className="space-y-4 text-[15px] font-medium text-foreground">
-            <li className="flex items-start gap-2">
-              <span className="mt-0.5 text-primary">✔</span>
-              <span>Full access to English speaking practice for 2 days</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-0.5 text-primary">✔</span>
-              <span>Continue your subscription if you like it</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-0.5 text-primary">✔</span>
-              <span>Cancel anytime before the trial ends if it's not for you — no extra charges</span>
-            </li>
-          </ul>
-          <p className="text-[15px] text-foreground/80 leading-[1.6]">
-            Sign up now and see how Rllora AI English Speaking can help you improve your fluency.
-          </p>
-        </div>
-      </div>
-      <div className="flex flex-1 items-center justify-center p-4">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4 py-8">
+      <div className="flex w-full items-center justify-center">
         <SignUp
           routing="path"
           path={`${basePath}/sign-up`}
