@@ -1,4 +1,4 @@
-modules = ["nodejs-24", "python-base-3.13"]
+modules = ["nodejs-24", "python-base-3.13", "postgresql-16"]
 
 [deployment]
 router = "application"
@@ -30,3 +30,6 @@ STRIPE_PRICE_AUDIO_FIRST_YEARLY = "price_1UIEKZEoxhUPFxgidV6KoGIQ"
 STRIPE_PRICE_READ_WRITE_MONTHLY = "price_1UIEKSEoxhUPFxgiIfAGrHsL"
 STRIPE_PRICE_READ_WRITE_QUARTERLY = "price_1UIEKUEoxhUPFxgi9jqSf4UJ"
 STRIPE_PRICE_READ_WRITE_YEARLY = "price_1UIEKVEoxhUPFxgiMZ4SUvmH"
+
+[nix]
+channel = "stable-25_05"
