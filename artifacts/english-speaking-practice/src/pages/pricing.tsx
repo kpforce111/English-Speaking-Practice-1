@@ -341,7 +341,7 @@ export function Pricing() {
                   </div>
                   <p className="text-[13px] text-muted-foreground mb-6">
                     {trialAvailableToday
-                      ? 'After your shared 2-day trial, you will be charged for this box and billing period. Cancel anytime.'
+                      ? 'No payment method is collected. After the shared 2-day trial, choose a box and subscribe only if you want to continue.'
                       : 'Your shared trial has already been used. This box will start its paid billing period today.'}
                   </p>
 

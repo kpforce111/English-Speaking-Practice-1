@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { Mic, Play, ArrowRight, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { useSubmitBeginnerAssessment, BeginnerAssessmentInputLanguage } from '@workspace/api-client-react';
@@ -26,6 +26,8 @@ export function StartFromZeroAssessment() {
     alphabetRecognition: 0,
   });
   const [error, setError] = useState<string | null>(null);
+  const [isListening, setIsListening] = useState(false);
+  const [heardText, setHeardText] = useState('');
   
   const handleStartTest = () => {
     setStep('test');
@@ -50,27 +52,46 @@ export function StartFromZeroAssessment() {
     });
   };
 
-  const handleChoice = (good: boolean) => {
-    let newScores = { ...scores };
-    
-    if (testStep === 0) {
-      newScores.wordRecognition = good ? 1.0 : 0.3;
-      newScores.listening = good ? 0.9 : 0.2;
-    } else if (testStep === 1) {
-      newScores.alphabetRecognition = good ? 1.0 : 0.4;
-      newScores.pronunciation = good ? 0.8 : 0.3;
-    } else if (testStep === 2) {
-      newScores.sentenceUnderstanding = good ? 0.9 : 0.3;
-      newScores.repeating = good ? 0.85 : 0.2;
-    }
+  const advance = (changes: Partial<typeof scores>) => {
+    const nextScores = { ...scores, ...changes };
+    setScores(nextScores);
+    setError(null);
+    if (testStep < 2) setTestStep((current) => current + 1);
+    else submitFinal(nextScores);
+  };
 
-    setScores(newScores);
+  const speak = (text: string) => {
+    window.speechSynthesis?.cancel();
+    window.speechSynthesis?.speak(new SpeechSynthesisUtterance(text));
+  };
 
-    if (testStep < 2) {
-      setTestStep(t => t + 1);
-    } else {
-      submitFinal(newScores);
+  const recordPhrase = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setError('Voice recognition is not available in this browser. You can skip this voice task.');
+      return;
     }
+    setError(null);
+    setHeardText('');
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-IN';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = () => {
+      setIsListening(false);
+      setError('Microphone could not hear you. Please try again or skip.');
+    };
+    recognition.onresult = (event: any) => {
+      const transcript = String(event.results?.[0]?.[0]?.transcript || '').toLowerCase().trim();
+      setHeardText(transcript);
+      const expected = ['i', 'want', 'water'];
+      const matched = expected.filter((word) => transcript.split(/\s+/).includes(word)).length;
+      const score = matched / expected.length;
+      advance({ repeating: score, pronunciation: score });
+    };
+    recognition.start();
   };
 
   if (step === 'language') {
@@ -138,18 +159,18 @@ export function StartFromZeroAssessment() {
 
           {testStep === 0 && (
             <div className="reveal flex flex-col items-center w-full">
-              <div className="mb-6 flex h-32 w-32 items-center justify-center rounded-[2rem] bg-secondary/10 text-secondary text-xl font-bold p-4 break-words">
-                Apple
-              </div>
-              <h2 className="text-2xl font-bold">Listen & Tap</h2>
-              <p className="mt-2 text-base text-muted-foreground">Sunein aur sahi picture chunein.</p>
+              <button onClick={() => speak('Apple')} className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg" aria-label="Play the word Apple">
+                <Play fill="currentColor" size={30} />
+              </button>
+              <h2 className="text-2xl font-bold">Listen and choose</h2>
+              <p className="mt-2 text-base text-muted-foreground">Kaunsa picture “Apple” hai?</p>
               
-              <div className="mt-8 flex gap-4">
-                <button onClick={() => handleChoice(true)} className="flex h-16 w-32 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 font-bold border border-emerald-500/30 hover:bg-emerald-500/20">
-                  Tap Right
+              <div className="mt-8 grid w-full grid-cols-2 gap-4">
+                <button onClick={() => advance({ wordRecognition: 1, listening: 1 })} className="flex h-24 items-center justify-center rounded-2xl border-2 border-border bg-card text-5xl hover:border-primary">
+                  🍎
                 </button>
-                <button onClick={() => handleChoice(false)} className="flex h-16 w-32 items-center justify-center rounded-2xl bg-destructive/10 text-destructive font-bold border border-destructive/30 hover:bg-destructive/20">
-                  Tap Wrong
+                <button onClick={() => advance({ wordRecognition: 0, listening: 0 })} className="flex h-24 items-center justify-center rounded-2xl border-2 border-border bg-card text-5xl hover:border-primary">
+                  🏠
                 </button>
               </div>
             </div>
@@ -160,15 +181,15 @@ export function StartFromZeroAssessment() {
               <div className="mb-6 rounded-[2rem] bg-secondary/10 p-8 text-center text-secondary">
                 <h3 className="text-3xl font-extrabold tracking-widest">A B C D</h3>
               </div>
-              <h2 className="text-2xl font-bold">Read Aloud</h2>
-              <p className="mt-2 text-base text-muted-foreground">Mic dabayein aur padhein.</p>
+              <h2 className="text-2xl font-bold">Choose the next letter</h2>
+              <p className="mt-2 text-base text-muted-foreground">D ke baad kya aata hai?</p>
               
               <div className="mt-8 flex gap-4">
-                <button onClick={() => handleChoice(true)} className="flex h-16 w-32 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 font-bold border border-emerald-500/30 hover:bg-emerald-500/20">
-                  Read Good
+                <button onClick={() => advance({ alphabetRecognition: 1, sentenceUnderstanding: 1 })} className="flex h-16 w-32 items-center justify-center rounded-2xl border-2 border-border bg-card text-2xl font-bold hover:border-primary">
+                  E
                 </button>
-                <button onClick={() => handleChoice(false)} className="flex h-16 w-32 items-center justify-center rounded-2xl bg-destructive/10 text-destructive font-bold border border-destructive/30 hover:bg-destructive/20">
-                  Read Bad
+                <button onClick={() => advance({ alphabetRecognition: 0, sentenceUnderstanding: 0 })} className="flex h-16 w-32 items-center justify-center rounded-2xl border-2 border-border bg-card text-2xl font-bold hover:border-primary">
+                  G
                 </button>
               </div>
             </div>
@@ -176,18 +197,20 @@ export function StartFromZeroAssessment() {
 
           {testStep === 2 && (
             <div className="reveal flex flex-col items-center w-full">
-              <div className="mb-6 text-center">
-                <h3 className="text-2xl font-bold text-foreground">"I want water"</h3>
-              </div>
+              <button onClick={() => speak('I want water')} className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-secondary text-secondary-foreground shadow-lg" aria-label="Play I want water">
+                <Play fill="currentColor" size={24} />
+              </button>
+              <div className="mb-6 text-center"><h3 className="text-2xl font-bold text-foreground">“I want water”</h3></div>
               <h2 className="text-2xl font-bold">Repeat After Me</h2>
-              <p className="mt-2 text-base text-muted-foreground">Mere baad dohraayein.</p>
+              <p className="mt-2 text-base text-muted-foreground">{isListening ? 'Sun raha hoon… boliye.' : 'Mic dabayein aur sentence boliye.'}</p>
+              {heardText && <p className="mt-3 rounded-xl bg-secondary/10 px-4 py-2 text-sm">Heard: {heardText}</p>}
               
-              <div className="mt-8 flex gap-4">
-                <button disabled={submitAssessment.isPending} onClick={() => handleChoice(true)} className="flex h-16 w-32 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 font-bold border border-emerald-500/30 hover:bg-emerald-500/20 disabled:opacity-50">
-                  {submitAssessment.isPending ? <Loader2 size={20} className="animate-spin" /> : 'Repeat Good'}
+              <div className="mt-8 flex flex-col items-center gap-3">
+                <button disabled={submitAssessment.isPending || isListening} onClick={recordPhrase} className="flex h-20 w-20 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg disabled:opacity-50">
+                  {submitAssessment.isPending || isListening ? <Loader2 size={24} className="animate-spin" /> : <Mic size={30} />}
                 </button>
-                <button disabled={submitAssessment.isPending} onClick={() => handleChoice(false)} className="flex h-16 w-32 items-center justify-center rounded-2xl bg-destructive/10 text-destructive font-bold border border-destructive/30 hover:bg-destructive/20 disabled:opacity-50">
-                  {submitAssessment.isPending ? <Loader2 size={20} className="animate-spin" /> : 'Repeat Bad'}
+                <button disabled={submitAssessment.isPending || isListening} onClick={() => advance({ repeating: 0, pronunciation: 0 })} className="text-sm font-bold text-muted-foreground underline disabled:opacity-50">
+                  Skip voice task
                 </button>
               </div>
             </div>

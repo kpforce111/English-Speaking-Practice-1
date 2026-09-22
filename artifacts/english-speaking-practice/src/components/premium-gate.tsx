@@ -1,8 +1,9 @@
-import { useGetCurrentSubscription } from '@workspace/api-client-react';
+import { getGetCurrentSubscriptionQueryKey, useGetCurrentSubscription } from '@workspace/api-client-react';
 import { TrialAccessPanel } from '@/components/trial-access-panel';
 
 export function PremiumGate({ children, featureName, productId }: { children: React.ReactNode, featureName?: string, productId: 'advanced' | 'start_zero' }) {
   const { data: subData, isLoading, isError, error } = useGetCurrentSubscription({ query: {
+    queryKey: getGetCurrentSubscriptionQueryKey(),
     retry: (failureCount, err) => {
       if ((err as any)?.status === 401) return false;
       return failureCount < 3;
