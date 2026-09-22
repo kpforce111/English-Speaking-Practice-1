@@ -41,8 +41,7 @@ export type SubscriptionDetailsProvider = typeof SubscriptionDetailsProvider[key
 
 
 export const SubscriptionDetailsProvider = {
-  stripe: 'stripe',
-  razorpay: 'razorpay',
+  phonepe: 'phonepe',
 } as const;
 
 export type SubscriptionDetailsStatus = typeof SubscriptionDetailsStatus[keyof typeof SubscriptionDetailsStatus];
@@ -82,8 +81,7 @@ export type CancellationResponseProvider = typeof CancellationResponseProvider[k
 
 
 export const CancellationResponseProvider = {
-  stripe: 'stripe',
-  razorpay: 'razorpay',
+  phonepe: 'phonepe',
 } as const;
 
 export type CancellationResponseStatus = typeof CancellationResponseStatus[keyof typeof CancellationResponseStatus];
@@ -198,8 +196,7 @@ export type CreatePremiumCheckoutBodyProvider = typeof CreatePremiumCheckoutBody
 
 
 export const CreatePremiumCheckoutBodyProvider = {
-  stripe: 'stripe',
-  razorpay: 'razorpay',
+  phonepe: 'phonepe',
 } as const;
 
 export type CreatePremiumCheckoutBodyPlan = typeof CreatePremiumCheckoutBodyPlan[keyof typeof CreatePremiumCheckoutBodyPlan];

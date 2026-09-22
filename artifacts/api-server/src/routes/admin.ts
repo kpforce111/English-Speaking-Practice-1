@@ -15,7 +15,7 @@ const defaultPrivacy = {
     { heading: "1. Information We Collect", body: "We collect basic account information and practice data (sentences spoken, minutes, active days) to provide the service and track your progress." },
     { heading: "2. Audio and AI Processing", body: "When you use our voice practice or roleplay features, your audio and text inputs are processed by our AI partners (including OpenAI and Replit integrations) to generate responses, transcripts, and feedback. Audio recordings are processed transiently and are not stored permanently by us. Transcripts of your conversations are saved to allow you to review your practice history and receive progress reports." },
     { heading: "3. Data Retention", body: "Your practice history is retained as long as your account is active. You may request account deletion at any time via the Support page, which will permanently remove your transcripts and progress data." },
-    { heading: "4. Subscriptions and Payments", body: "We use third-party payment processors (Stripe and Razorpay). We do not store your full card number or UPI details on our servers." },
+    { heading: "4. Subscriptions and Payments", body: "Payments are temporarily paused while PhonePe merchant approval and integration are completed. We do not store full card numbers or UPI credentials on our servers." },
   ],
 };
 
@@ -134,15 +134,7 @@ router.get("/admin/overview", requireOwner, async (_req, res) => {
       aiChat: Boolean(process.env.AI_INTEGRATIONS_OPENAI_API_KEY),
       voiceAi: Boolean(process.env.AI_INTEGRATIONS_OPENAI_API_KEY),
       pronunciation: Boolean(process.env.RAPIDAPI_KEY && process.env.RAPIDAPI_LANGUAGE_CONFIDENCE_URL),
-      stripe: [
-        "STRIPE_PRICE_READ_WRITE_MONTHLY",
-        "STRIPE_PRICE_READ_WRITE_QUARTERLY",
-        "STRIPE_PRICE_READ_WRITE_YEARLY",
-        "STRIPE_PRICE_AUDIO_FIRST_MONTHLY",
-        "STRIPE_PRICE_AUDIO_FIRST_QUARTERLY",
-        "STRIPE_PRICE_AUDIO_FIRST_YEARLY",
-      ].every((key) => Boolean(process.env[key])),
-      razorpay: Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET && process.env.RAZORPAY_WEBHOOK_SECRET),
+      payments: { gateway: "inactive", phonepeApprovalPending: true },
     },
   });
 });

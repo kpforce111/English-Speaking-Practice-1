@@ -9,19 +9,13 @@ import { ReplitConnectors } from "@replit/connectors-sdk";
 import { authenticatedClerkUserId, getUserId, entitlement, requirePremium, words, recordEvent, reserveVoice, releaseVoice } from "../lib/session";
 import { pool } from "@workspace/db";
 import { ensureCompatibleFormat, speechToText, textToSpeech } from "@workspace/integrations-openai-ai-server/audio";
-import Stripe from "stripe";
-import { publicAppUrl } from "../lib/publicAppUrl";
 import { compactLearningContext, routeAiText } from "../lib/aiRouter";
 import {
-  boxEnvSegment,
   effectiveBoxStatus,
-  grantSharedTrial,
   learningBoxes,
   parseLearningBoxId,
   sharedTrialState,
 } from "../lib/boxSubscriptions";
-import { syncStripeBilling } from "../lib/stripeBilling";
-import { stripeConnectorRequest } from "../lib/stripeConnector";
 
 const router: IRouter = Router();
 const connectors = new ReplitConnectors();
@@ -35,11 +29,7 @@ const plans = {
 
 function activePaymentGateway() {
   const gateway = String(process.env.PAYMENT_GATEWAY || "inactive").trim().toLowerCase();
-  return gateway === "stripe" || gateway === "phonepe" ? gateway : "inactive";
-}
-
-function requiredEnv(...keys: string[]) {
-  return keys.filter((key) => !process.env[key]);
+  return gateway === "phonepe" ? gateway : "inactive";
 }
 
 const audioTypes = new Set(["audio/webm", "audio/mp4", "audio/mpeg", "audio/ogg", "audio/wav", "audio/x-wav"]);
@@ -109,9 +99,6 @@ async function translateOrCorrect(instruction: string, content: string) {
 router.get("/session", async (req, res) => {
   const userId = await getUserId(req, res);
   const signedIn = Boolean(authenticatedClerkUserId(req));
-  if (signedIn) {
-    try { await syncStripeBilling(userId); } catch (error) { req.log.warn({ error }, "Stripe billing sync failed during session read"); }
-  }
   const current = await entitlement(userId);
   const today = await usage(userId);
   res.json({ userId, signedIn, plan: current.effectivePlan, status: current.effectiveStatus, providerStatus: current.status, usage: { textMessages: today.row.text_messages, voiceSeconds: today.row.voice_seconds }, limits: { freeTextMessages: 10, premiumTextMessages: 100, freeWords: 50, premiumVoiceSeconds: 900 } });
@@ -121,7 +108,7 @@ router.get("/account/export", async (req, res) => {
   if (!authenticatedClerkUserId(req)) { res.status(401).json({ error: "Sign in to export your account." }); return; }
   const userId = await getUserId(req, res);
   const [account, subscription, boxSubscriptions, usageRows, progressRows, eventRows] = await Promise.all([
-    pool.query("SELECT id, created_at, stripe_customer_id, razorpay_customer_id FROM users WHERE id = $1", [userId]),
+    pool.query("SELECT id, created_at, razorpay_customer_id FROM users WHERE id = $1", [userId]),
     pool.query("SELECT * FROM entitlements WHERE user_id = $1", [userId]),
     pool.query("SELECT * FROM box_subscriptions WHERE user_id = $1 ORDER BY box_id", [userId]),
     pool.query("SELECT * FROM daily_usage WHERE user_id = $1 ORDER BY usage_date", [userId]),
@@ -165,7 +152,6 @@ router.delete("/account", async (req, res) => {
 
 router.get("/subscription", async (req, res) => {
   const userId = await getUserId(req, res);
-  try { await syncStripeBilling(userId); } catch (error) { req.log.warn({ error }, "Stripe billing sync failed during subscription read"); }
   const rows = await pool.query("SELECT * FROM box_subscriptions WHERE user_id = $1 ORDER BY box_id", [userId]);
   const subscriptions = rows.rows.map((row) => {
     const effective = effectiveBoxStatus(row);
@@ -206,43 +192,7 @@ router.post("/subscription/cancel", async (req, res) => {
     res.status(409).json({ error: "Subscription cancellation is already pending.", code: "CANCELLATION_PENDING" });
     return;
   }
-  try {
-    if (current.provider === "stripe") {
-      const subscription = await stripeConnectorRequest<Record<string, any>>(
-        `/v1/subscriptions/${encodeURIComponent(String(current.provider_subscription_id))}`,
-        { method: "POST", form: { cancel_at_period_end: "true" } },
-      );
-      const periodEnd = subscription.cancel_at || subscription.current_period_end || subscription.items?.data?.[0]?.current_period_end;
-      const end = periodEnd
-        ? new Date(Number(periodEnd) * 1000).toISOString()
-        : current.current_period_ends_at || current.trial_ends_at || null;
-      await pool.query("UPDATE box_subscriptions SET status = 'cancel_pending', current_period_ends_at = COALESCE($1, current_period_ends_at) WHERE user_id = $2 AND box_id = $3", [end, userId, boxId]);
-      res.json({ provider: "stripe", status: "cancel_pending", cancelAtPeriodEnd: true, accessUntil: end });
-      return;
-    }
-    if (current.provider === "razorpay") {
-      const missing = requiredEnv("RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET");
-      if (missing.length) { res.status(503).json({ error: `Razorpay is not configured. Missing: ${missing.join(", ")}`, code: "RAZORPAY_NOT_CONFIGURED", missing }); return; }
-      const auth = Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString("base64");
-      const upstream = await fetch(`https://api.razorpay.com/v1/subscriptions/${encodeURIComponent(String(current.provider_subscription_id))}/cancel`, {
-        method: "POST",
-        headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ cancel_at_cycle_end: 1 }),
-      });
-      if (!upstream.ok) {
-        req.log.error({ status: upstream.status }, "Razorpay subscription cancellation failed");
-        res.status(502).json({ error: "Razorpay could not schedule subscription cancellation." });
-        return;
-      }
-      await pool.query("UPDATE box_subscriptions SET status = 'cancel_pending' WHERE user_id = $1 AND box_id = $2", [userId, boxId]);
-      res.json({ provider: "razorpay", status: "cancel_pending", cancelAtCycleEnd: true, accessUntil: current.current_period_ends_at || current.trial_ends_at || null });
-      return;
-    }
-    res.status(409).json({ error: "Subscription provider cannot be cancelled.", code: "UNSUPPORTED_PROVIDER" });
-  } catch (error) {
-    req.log.error({ error }, "subscription cancellation failed");
-    res.status(502).json({ error: "The billing provider could not schedule cancellation." });
-  }
+  res.status(503).json({ error: "Subscription cancellation will be available after PhonePe approval and integration.", code: "PHONEPE_PENDING" });
 });
 
 router.post("/translate", async (req, res) => {
@@ -417,41 +367,17 @@ router.get("/plans", (_req, res) => res.json({
 router.get("/payment-options", (req, res) => {
   const country = String(req.query.country || "").toUpperCase();
   const gateway = activePaymentGateway();
-  if (gateway === "inactive") {
-    res.json({
-      country,
-      gateway,
-      options: [],
-      note: "Payments are temporarily unavailable while PhonePe approval is pending.",
-    });
-    return;
-  }
-  if (gateway === "phonepe") {
-    res.json({
-      country,
-      gateway,
-      options: [{ id: "phonepe", provider: "phonepe", label: "PhonePe", available: false }],
-      note: "PhonePe payments will be enabled after merchant approval and integration.",
-    });
-    return;
-  }
-  const stripeReady = Object.keys(learningBoxes).every((boxId) =>
-    Object.keys(plans).every((planId) => process.env[`STRIPE_PRICE_${boxId.toUpperCase()}_${planId.toUpperCase()}`]),
-  );
   res.json({
     country,
     gateway,
-    options: [{ id: "stripe-card", provider: "stripe", label: "Card (test mode)", available: stripeReady }],
-    note: stripeReady
-      ? "Stripe is available only because PAYMENT_GATEWAY=stripe was explicitly selected."
-      : "Stripe test mode is selected but its price configuration is incomplete.",
+    options: [],
+    note: "Payments are temporarily unavailable while PhonePe approval is pending.",
   });
 });
 
 router.post("/checkout", async (req, res) => {
   if (!authenticatedClerkUserId(req)) { res.status(401).json({ error: "Sign in before starting Premium checkout.", code: "SIGN_IN_REQUIRED" }); return; }
-  const userId = await getUserId(req, res);
-  const { provider, plan = "monthly", country = "IN" } = req.body || {};
+  const { plan = "monthly" } = req.body || {};
   const gateway = activePaymentGateway();
   const boxId = parseLearningBoxId(req.body?.boxId);
   if (!boxId) { res.status(400).json({ error: "boxId must be read_write or audio_first" }); return; }
@@ -464,194 +390,9 @@ router.post("/checkout", async (req, res) => {
     res.status(503).json({ error: "PhonePe approval is still pending. Payments are not live yet.", code: "PHONEPE_PENDING" });
     return;
   }
-  if (provider !== gateway) {
-    res.status(400).json({ error: `The active payment gateway is ${gateway}.`, code: "PAYMENT_PROVIDER_INACTIVE" });
-    return;
-  }
-  const existingRow = (await pool.query("SELECT * FROM box_subscriptions WHERE user_id = $1 AND box_id = $2", [userId, boxId])).rows[0];
-  const existingEntitlement = existingRow ? effectiveBoxStatus(existingRow) : null;
-  if (existingEntitlement?.effectiveStatus === "pending_payment") {
-    res.status(409).json({ error: "A checkout payment is already pending.", code: "PAYMENT_PENDING" });
-    return;
-  }
-  if (existingEntitlement && existingEntitlement.effectivePlan !== "free" && existingRow.provider_subscription_id) {
-    res.status(409).json({ error: "An active subscription already exists for this learning box.", code: "SUBSCRIPTION_EXISTS" });
-    return;
-  }
-  const trialState = await sharedTrialState(userId);
-  const proposedTrialEnds = trialState.activeTrialEndsAt || (trialState.used ? null : new Date(Date.now() + 2 * 24 * 60 * 60 * 1000));
-  const grantsSharedTrial = !trialState.used;
-  if (provider === "razorpay") {
-    const planKey = `RAZORPAY_PLAN_${boxEnvSegment(boxId)}_${String(plan).toUpperCase()}`;
-    const env = requiredEnv("RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", planKey);
-    if (env.length) { res.status(503).json({ error: `Razorpay is not configured. Missing: ${env.join(", ")}`, code: "RAZORPAY_NOT_CONFIGURED", missing: env }); return; }
-    const auth = Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString("base64");
-    const upstream = await fetch("https://api.razorpay.com/v1/subscriptions", {
-      method: "POST",
-      headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        plan_id: process.env[planKey],
-        total_count: 120,
-        ...(proposedTrialEnds ? { start_at: Math.floor(proposedTrialEnds.getTime() / 1000) } : {}),
-        customer_notify: 1,
-        notes: { userId, plan, boxId, country, grantsSharedTrial: grantsSharedTrial ? "true" : "false", paymentMethod: "upi_autopay_or_card" },
-      }),
-    });
-    if (!upstream.ok) { req.log.error({ status: upstream.status }, "Razorpay subscription creation failed"); res.status(502).json({ error: "Razorpay could not create the subscription." }); return; }
-    const subscription = await upstream.json() as Record<string, any>;
-    await pool.query(
-      `INSERT INTO box_subscriptions (user_id, box_id, plan, provider, selected_plan, provider_subscription_id, pending_payment_id, status, trial_ends_at)
-       VALUES ($1, $2, 'free', 'razorpay', $3, $4, $4, 'pending_payment', $5)
-       ON CONFLICT (user_id, box_id) DO UPDATE SET
-         plan = 'free', provider = 'razorpay', selected_plan = EXCLUDED.selected_plan,
-         provider_subscription_id = EXCLUDED.provider_subscription_id,
-         pending_payment_id = EXCLUDED.pending_payment_id, status = 'pending_payment',
-         trial_ends_at = EXCLUDED.trial_ends_at`,
-      [userId, boxId, plan, subscription.id, proposedTrialEnds?.toISOString() || null],
-    );
-    res.json({ provider: "razorpay", keyId: process.env.RAZORPAY_KEY_ID, trialAmountPaise: 0, subscriptionId: subscription.id, status: subscription.status, trialEndsAt: proposedTrialEnds?.toISOString() || null, upiAutopaySupported: true });
-    return;
-  }
-  if (provider === "stripe") {
-    const priceKey = `STRIPE_PRICE_${boxEnvSegment(boxId)}_${String(plan).toUpperCase()}`;
-    const missing = requiredEnv(priceKey);
-    if (missing.length) { res.status(503).json({ error: `Stripe is not configured. Missing: ${missing.join(", ")}`, code: "STRIPE_NOT_CONFIGURED", missing }); return; }
-    const origin = publicAppUrl();
-    const checkoutForm: Record<string, string> = {
-      mode: "subscription",
-      "line_items[0][price]": process.env[priceKey]!,
-      "line_items[0][quantity]": "1",
-      "subscription_data[metadata][userId]": userId,
-      "subscription_data[metadata][plan]": plan,
-      "subscription_data[metadata][boxId]": boxId,
-      "metadata[userId]": userId,
-      "metadata[plan]": plan,
-      "metadata[boxId]": boxId,
-      "metadata[grantsSharedTrial]": grantsSharedTrial ? "true" : "false",
-      success_url: `${origin}/pricing?checkout=success&box=${boxId}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/pricing?checkout=cancelled&box=${boxId}`,
-      allow_promotion_codes: "true",
-    };
-    if (proposedTrialEnds) {
-      checkoutForm[grantsSharedTrial ? "subscription_data[trial_period_days]" : "subscription_data[trial_end]"] = grantsSharedTrial
-        ? "2"
-        : String(Math.floor(proposedTrialEnds.getTime() / 1000));
-    }
-    const session = await stripeConnectorRequest<Record<string, any>>("/v1/checkout/sessions", {
-      method: "POST",
-      form: checkoutForm,
-    });
-    await pool.query(
-      `INSERT INTO box_subscriptions (user_id, box_id, plan, provider, selected_plan, pending_payment_id, provider_subscription_id, status, trial_ends_at)
-       VALUES ($1, $2, 'free', 'stripe', $3, $4, NULL, 'pending_payment', $5)
-       ON CONFLICT (user_id, box_id) DO UPDATE SET
-         plan = 'free', provider = 'stripe', selected_plan = EXCLUDED.selected_plan,
-         pending_payment_id = EXCLUDED.pending_payment_id, provider_subscription_id = NULL,
-         status = 'pending_payment', trial_ends_at = EXCLUDED.trial_ends_at`,
-      [userId, boxId, plan, session.id, proposedTrialEnds?.toISOString() || null],
-    );
-    res.json({ provider: "stripe", checkoutUrl: session.url, sessionId: session.id, trialEndsAt: proposedTrialEnds?.toISOString() || null, boxId });
-    return;
-  }
-  res.status(400).json({ error: "provider must be razorpay or stripe" });
+  res.status(503).json({ error: "Payments are temporarily unavailable while PhonePe approval is pending.", code: "PAYMENTS_INACTIVE" });
 });
 
-router.post("/webhooks/:provider", async (req, res) => {
-  const provider = req.params.provider;
-  const raw = (req as typeof req & { rawBody?: Buffer }).rawBody;
-  if (!raw) { res.status(400).json({ error: "Raw webhook body is required." }); return; }
-  if (provider === "stripe") {
-    const missing = requiredEnv("STRIPE_WEBHOOK_SECRET");
-    if (missing.length) { res.status(503).json({ error: `Stripe webhook is not configured. Missing: ${missing.join(", ")}`, missing }); return; }
-    try {
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_connector_webhook_verification");
-      const signature = String(req.headers["stripe-signature"] || "");
-      const event = stripe.webhooks.constructEvent(raw, signature, process.env.STRIPE_WEBHOOK_SECRET!);
-      const inserted = await pool.query("INSERT INTO billing_events (id, provider, event_type) VALUES ($1, 'stripe', $2) ON CONFLICT DO NOTHING RETURNING id", [event.id, event.type]);
-      if (!inserted.rowCount) { res.json({ received: true, duplicate: true }); return; }
-      const object = event.data.object as any;
-      const metadata = object.metadata || {};
-      if (event.type === "checkout.session.completed") {
-        const boxId = parseLearningBoxId(metadata.boxId);
-        if (["paid", "no_payment_required"].includes(object.payment_status) && typeof metadata.userId === "string" && typeof metadata.plan === "string" && boxId && object.id) {
-          const pending = (await pool.query("SELECT * FROM box_subscriptions WHERE user_id = $1 AND box_id = $2 AND pending_payment_id = $3 AND status = 'pending_payment'", [metadata.userId, boxId, object.id])).rows[0];
-          if (pending && object.subscription) {
-            const subscription = await stripeConnectorRequest<Record<string, any>>(`/v1/subscriptions/${encodeURIComponent(String(object.subscription))}`);
-            const subscriptionMetadata = subscription.metadata || {};
-            if (subscriptionMetadata.userId === metadata.userId && subscriptionMetadata.boxId === boxId && ["trialing", "active"].includes(subscription.status)) {
-              const trialEnd = subscription.trial_end || null;
-              const verifiedPeriodEnd = (subscription as any).current_period_end;
-              if (trialEnd && metadata.grantsSharedTrial === "true") {
-                await grantSharedTrial(metadata.userId, new Date(trialEnd * 1000));
-              }
-              await pool.query(
-                `UPDATE box_subscriptions SET
-                   plan = $1, status = $2, provider_subscription_id = $3,
-                   provider_customer_id = $4, pending_payment_id = NULL,
-                   trial_ends_at = CASE WHEN $5 THEN TO_TIMESTAMP($6) ELSE trial_ends_at END,
-                   current_period_ends_at = CASE WHEN $7 THEN TO_TIMESTAMP($8) ELSE current_period_ends_at END
-                 WHERE user_id = $9 AND box_id = $10 AND pending_payment_id = $11 AND status = 'pending_payment'`,
-                [metadata.plan, subscription.status === "trialing" ? "trialing" : "active", subscription.id, object.customer || null, Boolean(trialEnd), trialEnd || 0, Boolean(verifiedPeriodEnd), verifiedPeriodEnd || 0, metadata.userId, boxId, object.id],
-              );
-              if (object.customer) await pool.query("UPDATE users SET stripe_customer_id = $1 WHERE id = $2", [object.customer, metadata.userId]);
-            }
-          }
-        }
-        res.json({ received: true });
-        return;
-      }
-      const subscriptionBoxId = parseLearningBoxId(metadata.boxId);
-      if (metadata.userId && subscriptionBoxId && event.type.startsWith("customer.subscription.")) {
-        const owned = (await pool.query("SELECT 1 FROM box_subscriptions WHERE user_id = $1 AND box_id = $2 AND provider_subscription_id = $3 AND status <> 'pending_payment'", [metadata.userId, subscriptionBoxId, object.id])).rowCount === 1;
-        if (!owned) { res.json({ received: true, ignored: "subscription_not_owned_or_unpaid" }); return; }
-        const active = event.type !== "customer.subscription.deleted" && ["active", "trialing"].includes(object.status || "active");
-        const pendingCancel = active && Boolean(object.cancel_at_period_end);
-        await pool.query("UPDATE box_subscriptions SET status = $1, plan = COALESCE($2, plan), provider_subscription_id = COALESCE($3, provider_subscription_id), provider_customer_id = COALESCE($4, provider_customer_id), current_period_ends_at = CASE WHEN $5 THEN TO_TIMESTAMP($6) ELSE current_period_ends_at END WHERE user_id = $7 AND box_id = $8",
-          [pendingCancel ? "cancel_pending" : (active ? (object.status === "trialing" ? "trialing" : "active") : "cancelled"), metadata.plan || null, object.id || null, object.customer || null, Boolean(object.current_period_end), object.current_period_end || 0, metadata.userId, subscriptionBoxId]);
-      }
-      res.json({ received: true });
-    } catch (error) { req.log.warn({ error }, "invalid Stripe webhook"); res.status(400).json({ error: "Invalid Stripe webhook signature or payload." }); }
-    return;
-  }
-  if (provider === "razorpay") {
-    const missing = requiredEnv("RAZORPAY_WEBHOOK_SECRET");
-    if (missing.length) { res.status(503).json({ error: `Razorpay webhook is not configured. Missing: ${missing.join(", ")}`, missing }); return; }
-    const signature = String(req.headers["x-razorpay-signature"] || "");
-    const expected = crypto.createHmac("sha256", process.env.RAZORPAY_WEBHOOK_SECRET!).update(raw).digest("hex");
-    if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) { res.status(400).json({ error: "Invalid Razorpay webhook signature." }); return; }
-    const event = req.body as any;
-    const eventId = String(req.headers["x-razorpay-event-id"] || crypto.createHash("sha256").update(raw).digest("hex"));
-    const inserted = await pool.query("INSERT INTO billing_events (id, provider, event_type) VALUES ($1, 'razorpay', $2) ON CONFLICT DO NOTHING RETURNING id", [eventId, String(event?.event || "subscription.updated")]);
-    if (!inserted.rowCount) { res.json({ received: true, duplicate: true }); return; }
-    const eventName = String(event?.event || "");
-    const entity = event?.payload?.subscription?.entity;
-    if (entity?.id) {
-      const notes = entity.notes || {};
-      const boxId = parseLearningBoxId(notes.boxId);
-      const pending = (await pool.query("SELECT * FROM box_subscriptions WHERE provider_subscription_id = $1", [entity.id])).rows[0];
-      if (pending && boxId === pending.box_id && notes.userId === pending.user_id) {
-        const trialEndsAt = entity.start_at
-          ? new Date(Number(entity.start_at) * 1000)
-          : null;
-        if (trialEndsAt && notes.grantsSharedTrial === "true") await grantSharedTrial(pending.user_id, trialEndsAt);
-        const mappedStatus = trialEndsAt && trialEndsAt.getTime() > Date.now()
-          ? "trialing"
-          : entity.status === "active" ? "active" : String(entity.status || "authenticated");
-        await pool.query(
-          `UPDATE box_subscriptions SET
-             plan = selected_plan, status = $1, pending_payment_id = NULL,
-             provider_customer_id = COALESCE($2, provider_customer_id),
-             trial_ends_at = COALESCE($3, trial_ends_at)
-           WHERE user_id = $4 AND box_id = $5 AND provider_subscription_id = $6`,
-          [mappedStatus, entity.customer_id || null, trialEndsAt?.toISOString() || null, pending.user_id, boxId, entity.id],
-        );
-        if (entity.customer_id) await pool.query("UPDATE users SET razorpay_customer_id = $1 WHERE id = $2", [entity.customer_id, pending.user_id]);
-      }
-    }
-    res.json({ received: true });
-    return;
-  }
-  res.status(400).json({ error: "Unknown billing provider." });
-});
+
 
 export default router;

@@ -63,7 +63,7 @@ export const DeleteAccountResponse = zod.void()
  * @summary Get independently tracked subscriptions for both learning boxes
  */
 export const GetCurrentSubscriptionResponse = zod.union([zod.object({
-  "provider": zod.enum(['stripe', 'razorpay']),
+  "provider": zod.enum(['phonepe']),
   "plan": zod.string(),
   "status": zod.enum(['trialing', 'active', 'cancel_pending']),
   "providerStatus": zod.string(),
@@ -85,7 +85,7 @@ export const CancelCurrentSubscriptionBody = zod.object({
 })
 
 export const CancelCurrentSubscriptionResponse = zod.object({
-  "provider": zod.enum(['stripe', 'razorpay']),
+  "provider": zod.enum(['phonepe']),
   "status": zod.enum(['cancel_pending']),
   "cancelAtPeriodEnd": zod.boolean().optional(),
   "cancelAtCycleEnd": zod.boolean().optional(),
@@ -228,22 +228,12 @@ export const ListPaymentOptionsResponse = zod.record(zod.string(), zod.unknown()
  * @summary Create a provider checkout for one independently billed learning box
  */
 export const CreatePremiumCheckoutBody = zod.object({
-  "provider": zod.enum(['stripe', 'razorpay']),
+  "provider": zod.enum(['phonepe']),
   "plan": zod.enum(['monthly', 'quarterly', 'yearly']),
   "boxId": zod.enum(['read_write', 'audio_first']),
   "country": zod.string().optional()
 })
 
 export const CreatePremiumCheckoutResponse = zod.unknown()
-
-
-/**
- * @summary Process an authenticated Stripe or Razorpay billing webhook
- */
-export const ProcessBillingWebhookParams = zod.object({
-  "provider": zod.enum(['stripe', 'razorpay'])
-})
-
-export const ProcessBillingWebhookResponse = zod.unknown()
 
 

@@ -134,14 +134,13 @@ async function mergeDeviceProfile(clerkUserId: string, deviceUserId: string): Pr
            WHERE target.user_id = $1 AND source.user_id = $2`,
           [accountId, deviceUserId],
         );
-        await client.query(
-          `UPDATE users target SET
-             stripe_customer_id = COALESCE(target.stripe_customer_id, source.stripe_customer_id),
+          await client.query(
+            `UPDATE users target SET
              razorpay_customer_id = COALESCE(target.razorpay_customer_id, source.razorpay_customer_id)
-           FROM users source WHERE target.id = $1 AND source.id = $2`,
-          [accountId, deviceUserId],
-        );
-        await client.query("UPDATE users SET stripe_customer_id = NULL, razorpay_customer_id = NULL WHERE id = $1", [deviceUserId]);
+            FROM users source WHERE target.id = $1 AND source.id = $2`,
+            [accountId, deviceUserId],
+          );
+          await client.query("UPDATE users SET razorpay_customer_id = NULL WHERE id = $1", [deviceUserId]);
       }
       if (!sourceOwnsBilling || !targetOwnsBilling) {
         await client.query(

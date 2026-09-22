@@ -353,26 +353,12 @@ paths:
               type: object
               required: [provider, plan, boxId]
               properties:
-                provider: { type: string, enum: [stripe, razorpay] }
+                provider: { type: string, enum: [phonepe] }
                 plan: { type: string, enum: [monthly, quarterly, yearly] }
                 boxId: { type: string, enum: [read_write, audio_first] }
                 country: { type: string }
       responses:
         "200": { description: Checkout created }
-        "503": { description: Provider not configured }
-  /webhooks/{provider}:
-    post:
-      operationId: processBillingWebhook
-      tags: [practice]
-      summary: Process an authenticated Stripe or Razorpay billing webhook
-      parameters:
-        - name: provider
-          in: path
-          required: true
-          schema: { type: string, enum: [stripe, razorpay] }
-      responses:
-        "200": { description: Webhook processed }
-        "400": { description: Invalid signature }
         "503": { description: Provider not configured }
 components:
   schemas:
@@ -416,7 +402,7 @@ components:
       type: object
       required: [provider, plan, status, providerStatus, providerSubscriptionId, cancelPending]
       properties:
-        provider: { type: string, enum: [stripe, razorpay] }
+        provider: { type: string, enum: [phonepe] }
         plan: { type: string }
         status: { type: string, enum: [trialing, active, cancel_pending] }
         providerStatus: { type: string }
@@ -434,7 +420,7 @@ components:
       type: object
       required: [provider, status]
       properties:
-        provider: { type: string, enum: [stripe, razorpay] }
+        provider: { type: string, enum: [phonepe] }
         status: { type: string, enum: [cancel_pending] }
         cancelAtPeriodEnd: { type: boolean }
         cancelAtCycleEnd: { type: boolean }
