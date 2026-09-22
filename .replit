@@ -1,4 +1,4 @@
-modules = ["nodejs-24", "postgresql-16"]
+modules = ["nodejs-24"]
 
 [deployment]
 router = "application"
@@ -19,9 +19,12 @@ expertMode = true
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
 
-[nix]
-channel = "stable-25_05"
-modules = ["nodejs-24", "postgresql-16"]
+[userenv]
+
+[userenv.shared]
+RAPIDAPI_LANGUAGE_CONFIDENCE_HOST = "scripted-speech-assessment1.p.rapidapi.com"
+RAPIDAPI_LANGUAGE_CONFIDENCE_URL = "https://scripted-speech-assessment1.p.rapidapi.com/speech-assessment/scripted/us"
+modules = ["nodejs-24"]
 
 [deployment]
 router = "application"
@@ -42,5 +45,8 @@ expertMode = true
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
 
-[nix]
-channel = "stable-25_05"
+[userenv]
+
+[userenv.shared]
+RAPIDAPI_LANGUAGE_CONFIDENCE_HOST = "scripted-speech-assessment1.p.rapidapi.com"
+RAPIDAPI_LANGUAGE_CONFIDENCE_URL = "https://scripted-speech-assessment1.p.rapidapi.com/speech-assessment/scripted/us"
