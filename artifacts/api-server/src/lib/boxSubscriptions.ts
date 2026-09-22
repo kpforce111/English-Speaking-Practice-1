@@ -1,24 +1,61 @@
 import { pool } from "@workspace/db";
 
 export const learningBoxes = {
-  read_write: {
-    id: "read_write",
-    label: "For Those Who Can Read & Write",
-    description: "Text-supported speaking, corrections, lessons, and practice.",
+  start_zero: {
+    id: "start_zero",
+    label: "0 English / Start from Zero",
+    description: "Voice-first, picture-supported English for complete beginners.",
   },
-  audio_first: {
-    id: "audio_first",
-    label: "For Those Who Cannot Read & Write",
-    description: "Audio-first speaking and listening practice with minimal reading.",
+  advanced: {
+    id: "advanced",
+    label: "Advanced English Coach",
+    description: "Text-supported speaking, corrections, lessons, and practice.",
   },
 } as const;
 
 export type LearningBoxId = keyof typeof learningBoxes;
+const legacyBoxIds = { read_write: "advanced", audio_first: "start_zero" } as const;
 
 export function parseLearningBoxId(value: unknown): LearningBoxId | null {
-  return typeof value === "string" && value in learningBoxes
-    ? value as LearningBoxId
-    : null;
+  if (typeof value !== "string") return null;
+  if (value in learningBoxes) return value as LearningBoxId;
+  return value in legacyBoxIds ? legacyBoxIds[value as keyof typeof legacyBoxIds] : null;
+}
+
+export function canonicalBoxId(value: unknown): LearningBoxId | null {
+  return parseLearningBoxId(value);
+}
+
+export function boxSqlIds(boxId: LearningBoxId) {
+  return boxId === "advanced" ? ["advanced", "read_write"] : ["start_zero", "audio_first"];
+}
+
+export function boxLabel(value: unknown) {
+  const id = canonicalBoxId(value);
+  return id ? learningBoxes[id] : null;
+}
+
+export function canonicalizeSubscriptionRow<T extends Record<string, any>>(row: T): T & { box_id: LearningBoxId } {
+  const boxId = canonicalBoxId(row.box_id);
+  return boxId ? { ...row, box_id: boxId } : row as T & { box_id: LearningBoxId };
+}
+
+export function strongestLogicalRow(rows: Array<Record<string, any>>, boxId: LearningBoxId): any {
+  return rows
+    .filter((row) => canonicalBoxId(row.box_id) === boxId)
+    .map((row) => ({ ...row, ...effectiveBoxStatus(row), box_id: boxId }))
+    .sort((a, b) => {
+      const rank = (row: Record<string, any>) => {
+        if (row.effectiveStatus === "active" || row.effectiveStatus === "cancel_pending") return row.provider_subscription_id ? 4 : 3;
+        if (row.effectiveStatus === "trialing") return 2;
+        if (row.status === "pending_payment") return 1;
+        return 0;
+      };
+      const score = rank(b) - rank(a);
+      if (score) return score;
+      const end = (row: Record<string, any>) => new Date(row.current_period_ends_at || row.trial_ends_at || 0).getTime();
+      return end(b) - end(a);
+    })[0] || null;
 }
 
 export function boxEnvSegment(boxId: LearningBoxId) {
@@ -42,16 +79,64 @@ export async function sharedTrialState(userId: string) {
 }
 
 export async function grantSharedTrial(userId: string, trialEndsAt: Date) {
-  await pool.query(
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [userId]);
+    await grantSharedTrialOnClient(client, userId, trialEndsAt);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function grantSharedTrialOnClient(client: { query: (text: string, values?: unknown[]) => Promise<unknown> }, userId: string, trialEndsAt: Date) {
+  await client.query(
     `INSERT INTO box_subscriptions (user_id, box_id, plan, status, trial_ends_at)
      SELECT $1, box_id, 'trial', 'trialing', $2
-     FROM (VALUES ('read_write'), ('audio_first')) AS boxes(box_id)
+     FROM (VALUES ('start_zero'), ('advanced')) AS boxes(box_id)
      ON CONFLICT (user_id, box_id) DO UPDATE SET
        plan = CASE WHEN box_subscriptions.provider_subscription_id IS NULL THEN 'trial' ELSE box_subscriptions.plan END,
        status = CASE WHEN box_subscriptions.provider_subscription_id IS NULL THEN 'trialing' ELSE box_subscriptions.status END,
        trial_ends_at = GREATEST(box_subscriptions.trial_ends_at, EXCLUDED.trial_ends_at)`,
     [userId, trialEndsAt.toISOString()],
   );
+}
+
+export async function startSharedTrial(userId: string) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [userId]);
+    const state = (await client.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE trial_ends_at IS NOT NULL OR status = 'pending_payment')::int AS used_count,
+         MAX(trial_ends_at) FILTER (WHERE trial_ends_at > NOW()) AS active_trial_ends_at
+       FROM box_subscriptions WHERE user_id = $1`,
+      [userId],
+    ) as { rows: Array<{ used_count: number; active_trial_ends_at: Date | null }> }).rows[0];
+    if (state?.active_trial_ends_at) {
+      await grantSharedTrialOnClient(client, userId, new Date(state.active_trial_ends_at));
+      await client.query("COMMIT");
+      return { created: false, activeTrialEndsAt: new Date(state.active_trial_ends_at) };
+    }
+    if (Number(state?.used_count || 0) > 0) {
+      await client.query("ROLLBACK");
+      return { created: false, used: true, activeTrialEndsAt: null };
+    }
+    const trialEndsAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+    await grantSharedTrialOnClient(client, userId, trialEndsAt);
+    await client.query("COMMIT");
+    return { created: true, used: false, activeTrialEndsAt: trialEndsAt };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export function effectiveBoxStatus<T extends Record<string, unknown>>(row: T): T & {

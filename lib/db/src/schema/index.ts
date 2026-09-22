@@ -77,6 +77,46 @@ export const billingEvents = pgTable("billing_events", {
   processedAt: timestamp("processed_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const beginnerProfiles = pgTable("beginner_profiles", {
+  userId: text("user_id").primaryKey(),
+  level: text("level").default("level_0").notNull(),
+  assessmentCompleted: integer("assessment_completed").default(0).notNull(),
+  sessionsCompleted: integer("sessions_completed").default(0).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const beginnerItemProgress = pgTable("beginner_item_progress", {
+  userId: text("user_id").notNull(),
+  itemId: text("item_id").notNull(),
+  kind: text("kind").notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+  correctAttempts: integer("correct_attempts").default(0).notNull(),
+  mistakeCount: integer("mistake_count").default(0).notNull(),
+  lastPracticedAt: timestamp("last_practiced_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [primaryKey({ columns: [table.userId, table.itemId] })]);
+
+export const beginnerAssessments = pgTable("beginner_assessments", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  level: text("level").notNull(),
+  results: jsonb("results").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const beginnerSessionSummaries = pgTable("beginner_session_summaries", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  sessionDate: text("session_date").notNull(),
+  wordsLearned: integer("words_learned").default(0).notNull(),
+  sentencesPracticed: integer("sentences_practiced").default(0).notNull(),
+  conversationsPracticed: integer("conversations_practiced").default(0).notNull(),
+  pronunciationMistakes: integer("pronunciation_mistakes").default(0).notNull(),
+  sentenceMistakes: integer("sentence_mistakes").default(0).notNull(),
+  weakItems: jsonb("weak_items").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [uniqueIndex("beginner_session_summary_user_date").on(table.userId, table.sessionDate)]);
+
 export const appSettings = pgTable("app_settings", {
   key: text("key").primaryKey(),
   value: jsonb("value").notNull(),

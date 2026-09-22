@@ -3,7 +3,7 @@ import {
   SendChatMessageBody,
   SendChatMessageResponse,
 } from "@workspace/api-zod";
-import { getUserId, recordEvent, releaseText, reserveText, textAllowance, words, entitlement } from "../lib/session";
+import { recordEvent, releaseText, reserveText, textAllowance, words, entitlement, requireBoxAccess } from "../lib/session";
 import { compactLearningContext, routeAiText } from "../lib/aiRouter";
 
 const router: IRouter = Router();
@@ -34,7 +34,8 @@ router.post("/chat", async (req, res): Promise<void> => {
     return;
   }
 
-  const userId = await getUserId(req, res);
+  const userId = await requireBoxAccess(req, res, "advanced");
+  if (!userId) return;
   const { message, history = [] } = parsed.data;
   const allowance = await textAllowance(userId);
   const currentWordCount = words(message);

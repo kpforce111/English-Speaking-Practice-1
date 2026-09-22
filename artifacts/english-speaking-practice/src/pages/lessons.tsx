@@ -5,7 +5,7 @@ import { useState } from 'react';
 
 export function Lessons() {
   return (
-    <PremiumGate featureName="Guided Lessons">
+    <PremiumGate productId="advanced" featureName="Guided Lessons">
       <LessonsList />
     </PremiumGate>
   );

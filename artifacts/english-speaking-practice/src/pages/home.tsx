@@ -12,6 +12,7 @@ import {
   X
 } from 'lucide-react';
 import { useGetPracticeSession } from '@workspace/api-client-react';
+import { PremiumGate } from '@/components/premium-gate';
 
 const STORAGE_KEY = 'english-speaking-practice-session';
 
@@ -128,6 +129,7 @@ export function Chat() {
   };
 
   return (
+    <PremiumGate productId="advanced" featureName="Chat Practice">
     <div className="practice-page flex min-h-[100dvh] w-full bg-background relative">
       <div className="mx-auto flex w-full max-w-[900px] flex-1 flex-col px-4 pb-5 pt-10 md:px-10 md:pb-8 md:pt-14 relative z-10">
         <header className="flex shrink-0 items-center justify-between border-b border-border/70 py-4 mb-6">
@@ -284,6 +286,7 @@ export function Chat() {
         </div>
       </div>
     </div>
+    </PremiumGate>
   );
 }
 

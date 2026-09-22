@@ -15,7 +15,7 @@ export function RoleplayScenario() {
   if (!scenarioId) return null;
 
   return (
-    <PremiumGate featureName="Roleplay Scenarios">
+    <PremiumGate productId="advanced" featureName="Roleplay Scenarios">
       <ScenarioChat scenarioId={scenarioId} />
     </PremiumGate>
   );

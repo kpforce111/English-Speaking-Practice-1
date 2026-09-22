@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import type { Request, Response } from "express";
 import { pool } from "@workspace/db";
 import { getAuth } from "@clerk/express";
-import { effectiveBoxStatus } from "./boxSubscriptions";
+import { effectiveBoxStatus, strongestLogicalRow, type LearningBoxId } from "./boxSubscriptions";
 
 const COOKIE_NAME = "rllora_session";
 if (!process.env.SESSION_SECRET && process.env.NODE_ENV !== "test") {
@@ -221,6 +221,17 @@ export async function requirePremium(req: Request, res: Response) {
   const current = await entitlement(userId);
   if (current.effectivePlan === "free" || current.effectiveStatus === "expired") {
     res.status(402).json({ error: "This feature is available with Premium.", code: "PREMIUM_REQUIRED" });
+    return null;
+  }
+  return userId;
+}
+
+export async function requireBoxAccess(req: Request, res: Response, boxId: LearningBoxId) {
+  const userId = await getUserId(req, res);
+  const rows = (await pool.query("SELECT * FROM box_subscriptions WHERE user_id = $1", [userId])).rows;
+  const current = strongestLogicalRow(rows, boxId);
+  if (!current || current.effectivePlan === "free" || current.effectiveStatus === "expired") {
+    res.status(402).json({ error: `This feature requires ${boxId} access.`, code: "PRODUCT_ACCESS_REQUIRED", boxId });
     return null;
   }
   return userId;

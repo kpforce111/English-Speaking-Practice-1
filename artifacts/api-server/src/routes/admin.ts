@@ -202,7 +202,7 @@ router.post("/admin/users/:userId/manual-trial", requireOwner, async (req, res) 
   }
   const trialEndsAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
   await grantSharedTrial(String(req.params.userId), trialEndsAt);
-  res.json({ entitlement: result.rows[0], boxes: ["read_write", "audio_first"], trialEndsAt: trialEndsAt.toISOString() });
+  res.json({ entitlement: result.rows[0], boxes: ["start_zero", "advanced"], trialEndsAt: trialEndsAt.toISOString() });
 });
 
 router.delete("/admin/users/:userId/manual-trial", requireOwner, async (req, res) => {

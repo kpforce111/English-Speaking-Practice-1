@@ -3,12 +3,14 @@ import healthRouter from "./health";
 import chatRouter from "./chat";
 import practiceRouter from "./practice";
 import adminRouter from "./admin";
+import beginnerRouter from "./beginner";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(chatRouter);
 router.use(practiceRouter);
+router.use(beginnerRouter);
 router.use(adminRouter);
 
 export default router;

@@ -4,7 +4,7 @@ import { BarChart2, Flame, MessageSquare, Clock, Trophy, TrendingUp, Loader2, Aw
 
 export function Progress() {
   return (
-    <PremiumGate featureName="Detailed Progress">
+    <PremiumGate productId="advanced" featureName="Detailed Progress">
       <ProgressDashboard />
     </PremiumGate>
   );

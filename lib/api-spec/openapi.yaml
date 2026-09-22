@@ -88,16 +88,26 @@ paths:
     get:
       operationId: getCurrentSubscription
       tags: [practice]
-      summary: Get independently tracked subscriptions for both learning boxes
+      summary: Get independently tracked subscriptions for both learning products
       responses:
         "200":
           description: Current subscription details or empty free-user state
           content:
             application/json:
-              schema:
-                oneOf:
-                  - $ref: "#/components/schemas/SubscriptionDetails"
-                  - $ref: "#/components/schemas/EmptySubscription"
+               schema: { $ref: "#/components/schemas/SubscriptionEnvelope" }
+  /trial/start:
+    post:
+      operationId: startSharedTrial
+      tags: [practice]
+      summary: Start the one-time two-day trial for both learning products
+      responses:
+        "200":
+          description: Active shared trial and both product access states
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TrialStartResponse" }
+        "401": { description: Authentication required }
+        "409": { description: Trial has already been used or expired }
   /subscription/cancel:
     post:
       operationId: cancelCurrentSubscription
@@ -111,7 +121,7 @@ paths:
               type: object
               required: [boxId]
               properties:
-                boxId: { type: string, enum: [read_write, audio_first] }
+                boxId: { type: string, enum: [start_zero, advanced] }
       responses:
         "200":
           description: Cancellation scheduled without removing current access
@@ -355,11 +365,54 @@ paths:
               properties:
                 provider: { type: string, enum: [phonepe] }
                 plan: { type: string, enum: [monthly, quarterly, yearly] }
-                boxId: { type: string, enum: [read_write, audio_first] }
+                boxId: { type: string, enum: [start_zero, advanced] }
                 country: { type: string }
       responses:
         "200": { description: Checkout created }
         "503": { description: Provider not configured }
+  /beginner/overview:
+    get:
+      operationId: getBeginnerOverview
+      tags: [practice]
+      summary: Get the persisted Start from Zero profile and today's adaptive lesson
+      responses:
+        "200":
+          description: Beginner profile and stable curriculum lesson
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BeginnerOverview" }
+  /beginner/assessment:
+    post:
+      operationId: submitBeginnerAssessment
+      tags: [practice]
+      summary: Place a learner at Level 0 or Level 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BeginnerAssessmentInput" }
+      responses:
+        "200":
+          description: Persisted placement
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BeginnerProfile" }
+  /beginner/practice:
+    post:
+      operationId: recordBeginnerPractice
+      tags: [practice]
+      summary: Record a voice-first beginner practice attempt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BeginnerPracticeInput" }
+      responses:
+        "200":
+          description: Updated beginner overview
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BeginnerOverview" }
 components:
   schemas:
     HealthStatus:
@@ -410,6 +463,31 @@ components:
         trialEndsAt: { type: string, format: date-time, nullable: true }
         currentPeriodEndsAt: { type: string, format: date-time, nullable: true }
         cancelPending: { type: boolean }
+    SubscriptionProduct:
+      type: object
+      required: [boxId, box, plan, status, providerStatus, cancelPending]
+      properties:
+        boxId: { type: string, enum: [start_zero, advanced] }
+        box: { type: object, additionalProperties: true }
+        provider: { type: ["string", "null"] }
+        plan: { type: string }
+        selectedPlan: { type: ["string", "null"] }
+        status: { type: string }
+        providerStatus: { type: string }
+        providerSubscriptionId: { type: ["string", "null"] }
+        trialEndsAt: { type: ["string", "null"], format: date-time }
+        currentPeriodEndsAt: { type: ["string", "null"], format: date-time }
+        cancelPending: { type: boolean }
+    SubscriptionEnvelope:
+      type: object
+      required: [subscriptions, trialUsed, activeTrialEndsAt, status]
+      properties:
+        subscriptions:
+          type: array
+          items: { $ref: "#/components/schemas/SubscriptionProduct" }
+        trialUsed: { type: boolean }
+        activeTrialEndsAt: { type: ["string", "null"], format: date-time }
+        status: { type: string, enum: [available, none] }
     EmptySubscription:
       type: object
       required: [subscription, status]
@@ -425,4 +503,102 @@ components:
         cancelAtPeriodEnd: { type: boolean }
         cancelAtCycleEnd: { type: boolean }
         accessUntil: { type: string, format: date-time, nullable: true }
+    BeginnerProfile:
+      type: object
+      required: [level, assessmentCompleted, sessionsCompleted]
+      properties:
+        level: { type: string, enum: [level_0, level_1] }
+        assessmentCompleted: { type: boolean }
+        sessionsCompleted: { type: number }
+    BeginnerAssessmentInput:
+      type: object
+      required: [wordRecognition, listening, repeating, pronunciation, sentenceUnderstanding, alphabetRecognition]
+      properties:
+        wordRecognition: { type: number, minimum: 0, maximum: 1 }
+        listening: { type: number, minimum: 0, maximum: 1 }
+        repeating: { type: number, minimum: 0, maximum: 1 }
+        pronunciation: { type: number, minimum: 0, maximum: 1 }
+        sentenceUnderstanding: { type: number, minimum: 0, maximum: 1 }
+        alphabetRecognition: { type: number, minimum: 0, maximum: 1 }
+        language: { type: string, enum: [hindi, roman_hindi, urdu] }
+    BeginnerPracticeInput:
+      type: object
+      required: [itemId, kind, correct]
+      properties:
+        itemId: { type: string, minLength: 1 }
+        kind: { type: string, enum: [word, sentence, listening, pronunciation, conversation] }
+        correct: { type: boolean }
+        pronunciationScore: { type: number, minimum: 0, maximum: 100 }
+    BeginnerOverview:
+      type: object
+      required: [profile, lesson, revision, summary]
+      properties:
+        profile: { $ref: "#/components/schemas/BeginnerProfile" }
+        lesson: { $ref: "#/components/schemas/BeginnerLesson" }
+        revision:
+          type: array
+          items: { $ref: "#/components/schemas/BeginnerItem" }
+        summary: { $ref: "#/components/schemas/BeginnerSummary" }
+    BeginnerItem:
+      type: object
+      required: [id, kind, level, prompt, english, picture, meaning, explanation, category]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [word, sentence] }
+        level: { type: string, enum: [level_0, level_1] }
+        prompt: { type: string }
+        english: { type: string }
+        picture: { $ref: "#/components/schemas/BeginnerPicture" }
+        meaning: { type: string }
+        explanation: { type: string }
+        category: { type: string }
+    BeginnerPicture:
+      type: object
+      required: [id, icon, alt]
+      properties:
+        id: { type: string }
+        icon: { type: string }
+        alt: { type: string }
+    BeginnerLesson:
+      type: object
+      required: [title, durationMinutes, flow, items, startItemId]
+      properties:
+        title: { type: string }
+        durationMinutes: { type: number }
+        flow:
+          type: array
+          items: { type: string }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/BeginnerItem" }
+        startItemId: { type: string }
+    BeginnerSummary:
+      type: object
+      required: [wordsLearned, sentencesPracticed, conversationsPracticed, pronunciationMistakes, sentenceMistakes, weakItems]
+      properties:
+        wordsLearned: { type: number }
+        sentencesPracticed: { type: number }
+        conversationsPracticed: { type: number }
+        pronunciationMistakes: { type: number }
+        sentenceMistakes: { type: number }
+        weakItems:
+          type: array
+          items: { type: string }
+    TrialProductAccess:
+      type: object
+      required: [boxId, box, plan, status]
+      properties:
+        boxId: { type: string, enum: [start_zero, advanced] }
+        box: { type: object, additionalProperties: true }
+        plan: { type: string }
+        status: { type: string }
+        trialEndsAt: { type: ["string", "null"], format: date-time }
+    TrialStartResponse:
+      type: object
+      required: [activeTrialEndsAt, subscriptions]
+      properties:
+        activeTrialEndsAt: { type: string, format: date-time }
+        subscriptions:
+          type: array
+          items: { $ref: "#/components/schemas/TrialProductAccess" }
 

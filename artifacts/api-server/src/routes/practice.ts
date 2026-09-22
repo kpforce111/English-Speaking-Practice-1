@@ -6,15 +6,16 @@ import { join } from "node:path";
 import { Router, type IRouter } from "express";
 import { clerkClient } from "@clerk/express";
 import { ReplitConnectors } from "@replit/connectors-sdk";
-import { authenticatedClerkUserId, getUserId, entitlement, requirePremium, words, recordEvent, reserveVoice, releaseVoice } from "../lib/session";
+import { authenticatedClerkUserId, getUserId, entitlement, requireBoxAccess, words, recordEvent, reserveVoice, releaseVoice } from "../lib/session";
 import { pool } from "@workspace/db";
 import { ensureCompatibleFormat, speechToText, textToSpeech } from "@workspace/integrations-openai-ai-server/audio";
 import { compactLearningContext, routeAiText } from "../lib/aiRouter";
 import {
-  effectiveBoxStatus,
   learningBoxes,
   parseLearningBoxId,
   sharedTrialState,
+  startSharedTrial,
+  strongestLogicalRow,
 } from "../lib/boxSubscriptions";
 
 const router: IRouter = Router();
@@ -150,18 +151,47 @@ router.delete("/account", async (req, res) => {
   }
 });
 
+router.post("/trial/start", async (req, res): Promise<void> => {
+  if (!authenticatedClerkUserId(req)) {
+    res.status(401).json({ error: "Sign in before starting your free trial.", code: "SIGN_IN_REQUIRED" });
+    return;
+  }
+  const userId = await getUserId(req, res);
+  const trial = await startSharedTrial(userId);
+  if (trial.used) {
+    res.status(409).json({ error: "Your 2-day free trial has already been used or expired.", code: "TRIAL_ALREADY_USED" });
+    return;
+  }
+  const rows = await pool.query("SELECT * FROM box_subscriptions WHERE user_id = $1", [userId]);
+  const subscriptions = (["start_zero", "advanced"] as const).map((boxId) => {
+    const row = strongestLogicalRow(rows.rows, boxId);
+    return {
+      boxId,
+      box: learningBoxes[boxId],
+      plan: row?.effectivePlan || "trial",
+      status: row?.effectiveStatus || "trialing",
+      trialEndsAt: row?.trial_ends_at ? new Date(row.trial_ends_at).toISOString() : trial.activeTrialEndsAt?.toISOString() || null,
+    };
+  });
+  res.json({ activeTrialEndsAt: trial.activeTrialEndsAt?.toISOString(), subscriptions });
+});
+
 router.get("/subscription", async (req, res) => {
   const userId = await getUserId(req, res);
   const rows = await pool.query("SELECT * FROM box_subscriptions WHERE user_id = $1 ORDER BY box_id", [userId]);
-  const subscriptions = rows.rows.map((row) => {
-    const effective = effectiveBoxStatus(row);
+  const subscriptions = (["start_zero", "advanced"] as const).map((boxId) => {
+    const row = strongestLogicalRow(rows.rows, boxId);
+    if (!row) return {
+      boxId, box: learningBoxes[boxId], provider: null, plan: "free", selectedPlan: null,
+      status: "expired", providerStatus: "inactive", providerSubscriptionId: null,
+      trialEndsAt: null, currentPeriodEndsAt: null, cancelPending: false,
+    };
     return {
-      boxId: row.box_id,
-      box: learningBoxes[row.box_id as keyof typeof learningBoxes],
+      boxId, box: learningBoxes[boxId],
       provider: row.provider,
-      plan: effective.effectivePlan,
+      plan: row.effectivePlan,
       selectedPlan: row.selected_plan,
-      status: effective.effectiveStatus,
+      status: row.effectiveStatus,
       providerStatus: row.status,
       providerSubscriptionId: row.provider_subscription_id,
       trialEndsAt: row.trial_ends_at,
@@ -181,9 +211,9 @@ router.get("/subscription", async (req, res) => {
 router.post("/subscription/cancel", async (req, res) => {
   const userId = await getUserId(req, res);
   const boxId = parseLearningBoxId(req.body?.boxId);
-  if (!boxId) { res.status(400).json({ error: "boxId must be read_write or audio_first" }); return; }
-  const currentRow = (await pool.query("SELECT * FROM box_subscriptions WHERE user_id = $1 AND box_id = $2", [userId, boxId])).rows[0];
-  const current = currentRow ? effectiveBoxStatus(currentRow) : null;
+  if (!boxId) { res.status(400).json({ error: "boxId must be start_zero or advanced" }); return; }
+  const rows = (await pool.query("SELECT * FROM box_subscriptions WHERE user_id = $1", [userId])).rows;
+  const current = strongestLogicalRow(rows, boxId);
   if (!current || !current.provider || !current.provider_subscription_id || current.effectivePlan === "free") {
     res.status(404).json({ error: "No active subscription found.", code: "SUBSCRIPTION_NOT_FOUND" });
     return;
@@ -196,7 +226,7 @@ router.post("/subscription/cancel", async (req, res) => {
 });
 
 router.post("/translate", async (req, res) => {
-  const userId = await requirePremium(req, res); if (!userId) return;
+  const userId = await requireBoxAccess(req, res, "advanced"); if (!userId) return;
   const { text, direction = "english-to-roman-hindi" } = req.body || {};
   if (typeof text !== "string" || !text.trim()) { res.status(400).json({ error: "text is required" }); return; }
   try {
@@ -207,7 +237,7 @@ router.post("/translate", async (req, res) => {
 });
 
 router.post("/correct", async (req, res) => {
-  const userId = await requirePremium(req, res); if (!userId) return;
+  const userId = await requireBoxAccess(req, res, "advanced"); if (!userId) return;
   const { text, mode = "soft" } = req.body || {};
   if (typeof text !== "string" || !text.trim()) { res.status(400).json({ error: "text is required" }); return; }
   try {
@@ -218,7 +248,7 @@ router.post("/correct", async (req, res) => {
 });
 
 router.post("/voice", async (req, res) => {
-  const userId = await requirePremium(req, res); if (!userId) return;
+  const userId = await requireBoxAccess(req, res, "advanced"); if (!userId) return;
   const { audioBase64, mimeType = "audio/webm", scenario = "daily-life", history = [] } = req.body || {};
   let decoded: { input: Buffer; seconds: number };
   try {
@@ -239,7 +269,7 @@ router.post("/voice", async (req, res) => {
 });
 
 router.post("/pronunciation", async (req, res) => {
-  const userId = await requirePremium(req, res); if (!userId) return;
+  const userId = await requireBoxAccess(req, res, "advanced"); if (!userId) return;
   if (typeof req.body?.text !== "string" || !req.body.text.trim()) { res.status(400).json({ error: "text is required for pronunciation scoring" }); return; }
   let decoded: { input: Buffer; seconds: number };
   try { decoded = await decodedAudio(req.body?.audioBase64, req.body?.mimeType || "audio/webm"); }
@@ -311,10 +341,13 @@ router.post("/pronunciation", async (req, res) => {
   } catch (error) { await releaseVoice(userId, reservation.date, decoded.seconds); req.log.error({ error }, "pronunciation request failed"); res.status(503).json({ error: "Pronunciation scoring is temporarily unavailable." }); }
 });
 
-router.get("/roleplays", async (_req, res) => res.json({ scenarios: scenarios.map((id) => ({ id, title: id.replaceAll("-", " ").replace(/\b\w/g, (c) => c.toUpperCase()), prompt: `Act as a supportive ${id.replaceAll("-", " ")} partner. Keep turns short and correct mistakes.` })) }));
+router.get("/roleplays", async (req, res): Promise<void> => {
+  const userId = await requireBoxAccess(req, res, "advanced"); if (!userId) return;
+  res.json({ scenarios: scenarios.map((id) => ({ id, title: id.replaceAll("-", " ").replace(/\b\w/g, (c) => c.toUpperCase()), prompt: `Act as a supportive ${id.replaceAll("-", " ")} partner. Keep turns short and correct mistakes.` })) });
+});
 
 router.post("/roleplays/:scenario", async (req, res) => {
-  const userId = await requirePremium(req, res); if (!userId) return;
+  const userId = await requireBoxAccess(req, res, "advanced"); if (!userId) return;
   const scenario = req.params.scenario as (typeof scenarios)[number];
   if (!scenarios.includes(scenario)) { res.status(400).json({ error: "Unknown roleplay scenario" }); return; }
   req.body = { ...req.body, scenario };
@@ -331,9 +364,12 @@ const lessons = levels.flatMap((level) => ["introductions", "daily-routines", "w
   id: `${level}-${topic}`, level, topic, title: `${topic.replaceAll("-", " ")} practice`, durationMinutes: 12 + (index % 3), steps: ["Warm up", "Listen and repeat", "Build your answer", "Reflect"],
 })));
 
-router.get("/lessons", async (_req, res) => res.json({ lessons }));
+router.get("/lessons", async (req, res): Promise<void> => {
+  const userId = await requireBoxAccess(req, res, "advanced"); if (!userId) return;
+  res.json({ lessons });
+});
 router.post("/lessons/:lessonId/attempt", async (req, res) => {
-  const userId = await requirePremium(req, res); if (!userId) return;
+  const userId = await requireBoxAccess(req, res, "advanced"); if (!userId) return;
   const lesson = lessons.find((item) => item.id === req.params.lessonId);
   if (!lesson) { res.status(404).json({ error: "Lesson not found" }); return; }
   const minutes = Math.min(15, Math.max(1, Number(req.body?.minutes) || lesson.durationMinutes));
@@ -345,20 +381,20 @@ router.post("/lessons/:lessonId/attempt", async (req, res) => {
 });
 
 router.get("/progress", async (req, res) => {
-  const userId = await requirePremium(req, res); if (!userId) return;
+  const userId = await requireBoxAccess(req, res, "advanced"); if (!userId) return;
   const events = await pool.query("SELECT kind, COUNT(*)::int AS count, COALESCE(SUM(duration_seconds), 0)::int AS seconds FROM practice_events WHERE user_id = $1 GROUP BY kind ORDER BY kind", [userId]);
   const recent = await pool.query("SELECT COUNT(*)::int AS sentences, COALESCE(SUM(duration_seconds), 0)::int AS voice_seconds FROM practice_events WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '7 days'", [userId]);
   res.json({ events: events.rows, weekly: recent.rows[0] });
 });
 
 router.get("/weekly-report", async (req, res) => {
-  const userId = await requirePremium(req, res); if (!userId) return;
+  const userId = await requireBoxAccess(req, res, "advanced"); if (!userId) return;
   const rows = await pool.query("SELECT kind, COUNT(*)::int AS count FROM practice_events WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '7 days' GROUP BY kind", [userId]);
   res.json({ period: "last-7-days", highlights: rows.rows, message: "Consistency is progress. Keep one short practice session going each day." });
 });
 
 router.get("/plans", (_req, res) => res.json({
-  trial: "Start with 2 days of full access to both learning boxes. No trial charge.",
+  trial: "Start with 2 days of full access to both learning products. No trial charge.",
   boxes: Object.values(learningBoxes),
   plans: Object.entries(plans).map(([id, value]) => ({ id, ...value, bestValue: id === "yearly" })),
   features: ["Voice Conversation (15 minutes per day)", "Real-Time Correction", "Translation", "Pronunciation + Fluency Score", "Roleplays", "Daily Lessons", "Progress Tracking", "Weekly Report", "Strict Mode and Soft Mode"],
@@ -380,7 +416,7 @@ router.post("/checkout", async (req, res) => {
   const { plan = "monthly" } = req.body || {};
   const gateway = activePaymentGateway();
   const boxId = parseLearningBoxId(req.body?.boxId);
-  if (!boxId) { res.status(400).json({ error: "boxId must be read_write or audio_first" }); return; }
+  if (!boxId) { res.status(400).json({ error: "boxId must be start_zero or advanced" }); return; }
   if (!plans[plan as keyof typeof plans]) { res.status(400).json({ error: "plan must be monthly, quarterly, or yearly" }); return; }
   if (gateway === "inactive") {
     res.status(503).json({ error: "Payments are temporarily unavailable while PhonePe approval is pending.", code: "PAYMENTS_INACTIVE" });

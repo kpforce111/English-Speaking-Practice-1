@@ -10,7 +10,7 @@ function stripEmojis(str: string) {
 
 export function Voice() {
   return (
-    <PremiumGate featureName="Voice Conversation">
+    <PremiumGate productId="advanced" featureName="Voice Conversation">
       <VoicePractice />
     </PremiumGate>
   );

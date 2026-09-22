@@ -12,6 +12,10 @@ import { Layout } from '@/components/layout';
 import { Chat } from '@/pages/home';
 import { Dashboard } from '@/pages/dashboard';
 import { Welcome } from '@/pages/welcome';
+import { AdvancedHub } from '@/pages/advanced-hub';
+import { StartFromZeroHome } from '@/pages/start-from-zero/index';
+import { StartFromZeroAssessment } from '@/pages/start-from-zero/assessment';
+import { StartFromZeroPractice } from '@/pages/start-from-zero/practice';
 import { Voice } from '@/pages/voice';
 import { Translate } from '@/pages/translate';
 import { Roleplays } from '@/pages/roleplays';
@@ -38,7 +42,7 @@ const clerkAppearance = {
   theme: shadcn,
   cssLayerName: 'clerk',
   options: { logoPlacement: 'inside' as const, logoLinkUrl: basePath || '/', logoImageUrl: `${window.location.origin}${basePath}/logo.svg` },
-  variables: { colorPrimary: '#7c3aed', colorForeground: '#342b46', colorMutedForeground: '#756b82', colorDanger: '#dc3f52', colorBackground: '#ffffff', colorInput: '#f4f0fa', colorInputForeground: '#342b46', colorNeutral: '#ddd4e8', fontFamily: 'Inter, sans-serif', borderRadius: '1rem' },
+  variables: { colorPrimary: '#f48225', colorForeground: '#13243a', colorMutedForeground: '#5b546e', colorDanger: '#e53e3e', colorBackground: '#fefdfa', colorInput: '#eae6df', colorInputForeground: '#13243a', colorNeutral: '#d3cfc8', fontFamily: 'Inter, sans-serif', borderRadius: '1rem' },
   elements: { rootBox: 'w-full flex justify-center', cardBox: 'bg-white rounded-2xl w-[440px] max-w-full overflow-hidden border border-border', card: '!shadow-none !border-0 !bg-transparent !rounded-none', footer: '!shadow-none !border-0 !bg-transparent !rounded-none', headerTitle: 'text-foreground', headerSubtitle: 'text-muted-foreground', socialButtonsBlockButtonText: 'text-[14px] font-medium text-foreground', formFieldLabel: 'text-[13px] font-medium text-foreground', footerActionLink: 'text-primary', footerActionText: 'text-muted-foreground', dividerText: 'text-muted-foreground', identityPreviewEditButton: 'text-primary', formFieldSuccessText: 'text-emerald-700', alertText: 'text-[13px] text-destructive', logoBox: 'h-12', logoImage: 'h-12 w-auto', socialButtonsBlockButton: 'border-border', formButtonPrimary: 'bg-primary text-[14px] font-medium text-primary-foreground', formFieldInput: 'bg-secondary text-[15px] text-foreground border-border', footerAction: 'bg-transparent', dividerLine: 'bg-border', alert: 'border-destructive/30', otpCodeFieldInput: 'border-border', formFieldRow: 'text-foreground', main: 'text-foreground' },
 };
 
@@ -80,22 +84,22 @@ function SignUpPage() {
       <div className="flex flex-1 flex-col justify-center p-8 bg-primary/5 lg:p-16">
         <div className="max-w-md mx-auto space-y-6">
           <h1 className="text-[18px] font-semibold text-foreground md:text-[20px]">
-            Welcome to Rllora AI English Speaking! 🎉
+            Welcome to Rllora AI English Speaking!
           </h1>
           <p className="text-[16px] text-foreground leading-[1.6]">
             Create your account and get both learning boxes free for 2 days.
           </p>
           <ul className="space-y-4 text-[15px] font-medium text-foreground">
             <li className="flex items-start gap-2">
-              <span className="mt-0.5">✅</span>
+              <span className="mt-0.5 text-primary">✔</span>
               <span>Full access to English speaking practice for 2 days</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="mt-0.5">✅</span>
+              <span className="mt-0.5 text-primary">✔</span>
               <span>Continue your subscription if you like it</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="mt-0.5">✅</span>
+              <span className="mt-0.5 text-primary">✔</span>
               <span>Cancel anytime before the trial ends if it's not for you — no extra charges</span>
             </li>
           </ul>
@@ -130,6 +134,10 @@ function Router() {
           <Switch>
            <Route path="/" component={Welcome} />
            <Route path="/home" component={Dashboard} />
+           <Route path="/advanced" component={AdvancedHub} />
+           <Route path="/start-from-zero" component={StartFromZeroHome} />
+           <Route path="/start-from-zero/assessment" component={StartFromZeroAssessment} />
+           <Route path="/start-from-zero/practice" component={StartFromZeroPractice} />
            <Route path="/chat" component={Chat} />
           <Route path="/voice" component={Voice} />
           <Route path="/translate" component={Translate} />

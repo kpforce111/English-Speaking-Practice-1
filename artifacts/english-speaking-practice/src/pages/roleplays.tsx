@@ -16,7 +16,7 @@ const ICONS: Record<string, React.ElementType> = {
 
 export function Roleplays() {
   return (
-    <PremiumGate featureName="Roleplays">
+    <PremiumGate productId="advanced" featureName="Roleplays">
       <RoleplaysList />
     </PremiumGate>
   );

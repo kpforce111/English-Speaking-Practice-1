@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import { useListPremiumPlans, useListPaymentOptions, useCreatePremiumCheckout, useGetCurrentSubscription, useCancelCurrentSubscription } from '@workspace/api-client-react';
+import { useListPremiumPlans, useListPaymentOptions, useCreatePremiumCheckout, useGetCurrentSubscription, useCancelCurrentSubscription, useStartSharedTrial, getGetPracticeSessionQueryKey, getGetCurrentSubscriptionQueryKey, getGetBeginnerOverviewQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Sparkles, Check, Loader2, AlertCircle, ShieldCheck, Globe, LogOut } from 'lucide-react';
+import { useLocation } from 'wouter';
 
-type BoxId = 'read_write' | 'audio_first';
+type BoxId = 'start_zero' | 'advanced';
 
 const LEARNING_BOXES: Array<{ id: BoxId; label: string; description: string }> = [
-  { id: 'read_write', label: 'For Those Who Can Read & Write', description: 'Text-supported speaking, corrections, and lessons.' },
-  { id: 'audio_first', label: 'For Those Who Cannot Read & Write', description: 'Audio-first speaking and listening with minimal reading.' },
+  { id: 'start_zero', label: '0 English / Start from Zero', description: 'Audio-first speaking and listening with minimal reading.' },
+  { id: 'advanced', label: 'Advanced English Coach', description: 'Text-supported speaking, corrections, and lessons.' },
 ];
 
 const FEATURES = [
@@ -37,10 +38,12 @@ export function Pricing() {
   const { data: subData, isLoading: loadingSub } = useGetCurrentSubscription();
   const checkout = useCreatePremiumCheckout();
   const cancelSub = useCancelCurrentSubscription();
+  const startTrial = useStartSharedTrial();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'quarterly' | 'yearly'>('yearly');
-  const [selectedBox, setSelectedBox] = useState<BoxId>('read_write');
+  const [selectedBox, setSelectedBox] = useState<BoxId>('start_zero');
   const [selectedProvider, setSelectedProvider] = useState<'phonepe' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -59,17 +62,31 @@ export function Pricing() {
   const selectedPlanAmount = selectedPlan === 'monthly' ? '₹349' : selectedPlan === 'quarterly' ? '₹899' : '₹2,999';
   const isSubscribed = subscription && ['active', 'trialing', 'cancel_pending'].includes(subscription.status);
 
-  const handleCheckout = () => {
+  const handleAction = () => {
+    setError(null);
+    if (trialAvailableToday) {
+      startTrial.mutate(undefined, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetPracticeSessionQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetCurrentSubscriptionQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetBeginnerOverviewQueryKey() });
+          setLocation(selectedBox === 'start_zero' ? '/start-from-zero' : '/advanced');
+        },
+        onError: (err: any) => {
+          setError(err.message || 'An error occurred while starting your trial.');
+        }
+      });
+      return;
+    }
+
     if (!selectedProvider || !selectedPlan) {
       setError('Please select a payment method.');
       return;
     }
     
-    setError(null);
      checkout.mutate({ data: { plan: selectedPlan, provider: selectedProvider, boxId: selectedBox, country: selectedCountry } }, {
        onSuccess: () => setError('Payments are temporarily unavailable while PhonePe approval is pending.'),
       onError: (err: any) => {
-        // preserve the honest 503 config errors from backend
         setError(err.message || 'An error occurred during checkout setup.');
       }
     });
@@ -336,11 +353,11 @@ export function Pricing() {
                   )}
 
                   <button
-                    onClick={handleCheckout}
-                    disabled={checkout.isPending || !selectedProvider}
+                    onClick={handleAction}
+                    disabled={startTrial.isPending || checkout.isPending || (!trialAvailableToday && !selectedProvider)}
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-4 text-[15px] font-medium text-primary-foreground shadow-[0_4px_14px_hsl(var(--primary)/.25)] hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {checkout.isPending && <Loader2 size={16} className="animate-spin" />}
+                    {(startTrial.isPending || checkout.isPending) && <Loader2 size={16} className="animate-spin" />}
                     {trialAvailableToday ? 'Continue with Free Trial' : `Subscribe for ${selectedPlanAmount}`}
                   </button>
                   

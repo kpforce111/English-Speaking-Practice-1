@@ -60,28 +60,48 @@ export const DeleteAccountResponse = zod.void()
 
 
 /**
- * @summary Get independently tracked subscriptions for both learning boxes
+ * @summary Get independently tracked subscriptions for both learning products
  */
-export const GetCurrentSubscriptionResponse = zod.union([zod.object({
-  "provider": zod.enum(['phonepe']),
+export const GetCurrentSubscriptionResponse = zod.object({
+  "subscriptions": zod.array(zod.object({
+  "boxId": zod.enum(['start_zero', 'advanced']),
+  "box": zod.record(zod.string(), zod.unknown()),
+  "provider": zod.string().nullish(),
   "plan": zod.string(),
-  "status": zod.enum(['trialing', 'active', 'cancel_pending']),
+  "selectedPlan": zod.string().nullish(),
+  "status": zod.string(),
   "providerStatus": zod.string(),
-  "providerSubscriptionId": zod.string(),
+  "providerSubscriptionId": zod.string().nullish(),
   "trialEndsAt": zod.coerce.date().nullish(),
   "currentPeriodEndsAt": zod.coerce.date().nullish(),
   "cancelPending": zod.boolean()
-}),zod.object({
-  "subscription": zod.null(),
-  "status": zod.enum(['none'])
-})])
+})),
+  "trialUsed": zod.boolean(),
+  "activeTrialEndsAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['available', 'none'])
+})
+
+
+/**
+ * @summary Start the one-time two-day trial for both learning products
+ */
+export const StartSharedTrialResponse = zod.object({
+  "activeTrialEndsAt": zod.coerce.date(),
+  "subscriptions": zod.array(zod.object({
+  "boxId": zod.enum(['start_zero', 'advanced']),
+  "box": zod.record(zod.string(), zod.unknown()),
+  "plan": zod.string(),
+  "status": zod.string(),
+  "trialEndsAt": zod.coerce.date().nullish()
+}))
+})
 
 
 /**
  * @summary Schedule cancellation at the end of the current trial or billing period
  */
 export const CancelCurrentSubscriptionBody = zod.object({
-  "boxId": zod.enum(['read_write', 'audio_first'])
+  "boxId": zod.enum(['start_zero', 'advanced'])
 })
 
 export const CancelCurrentSubscriptionResponse = zod.object({
@@ -230,10 +250,175 @@ export const ListPaymentOptionsResponse = zod.record(zod.string(), zod.unknown()
 export const CreatePremiumCheckoutBody = zod.object({
   "provider": zod.enum(['phonepe']),
   "plan": zod.enum(['monthly', 'quarterly', 'yearly']),
-  "boxId": zod.enum(['read_write', 'audio_first']),
+  "boxId": zod.enum(['start_zero', 'advanced']),
   "country": zod.string().optional()
 })
 
 export const CreatePremiumCheckoutResponse = zod.unknown()
+
+
+/**
+ * @summary Get the persisted Start from Zero profile and today's adaptive lesson
+ */
+export const GetBeginnerOverviewResponse = zod.object({
+  "profile": zod.object({
+  "level": zod.enum(['level_0', 'level_1']),
+  "assessmentCompleted": zod.boolean(),
+  "sessionsCompleted": zod.number()
+}),
+  "lesson": zod.object({
+  "title": zod.string(),
+  "durationMinutes": zod.number(),
+  "flow": zod.array(zod.string()),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['word', 'sentence']),
+  "level": zod.enum(['level_0', 'level_1']),
+  "prompt": zod.string(),
+  "english": zod.string(),
+  "picture": zod.object({
+  "id": zod.string(),
+  "icon": zod.string(),
+  "alt": zod.string()
+}),
+  "meaning": zod.string(),
+  "explanation": zod.string(),
+  "category": zod.string()
+})),
+  "startItemId": zod.string()
+}),
+  "revision": zod.array(zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['word', 'sentence']),
+  "level": zod.enum(['level_0', 'level_1']),
+  "prompt": zod.string(),
+  "english": zod.string(),
+  "picture": zod.object({
+  "id": zod.string(),
+  "icon": zod.string(),
+  "alt": zod.string()
+}),
+  "meaning": zod.string(),
+  "explanation": zod.string(),
+  "category": zod.string()
+})),
+  "summary": zod.object({
+  "wordsLearned": zod.number(),
+  "sentencesPracticed": zod.number(),
+  "conversationsPracticed": zod.number(),
+  "pronunciationMistakes": zod.number(),
+  "sentenceMistakes": zod.number(),
+  "weakItems": zod.array(zod.string())
+})
+})
+
+
+/**
+ * @summary Place a learner at Level 0 or Level 1
+ */
+export const submitBeginnerAssessmentBodyWordRecognitionMin = 0;
+export const submitBeginnerAssessmentBodyWordRecognitionMax = 1;
+
+export const submitBeginnerAssessmentBodyListeningMin = 0;
+export const submitBeginnerAssessmentBodyListeningMax = 1;
+
+export const submitBeginnerAssessmentBodyRepeatingMin = 0;
+export const submitBeginnerAssessmentBodyRepeatingMax = 1;
+
+export const submitBeginnerAssessmentBodyPronunciationMin = 0;
+export const submitBeginnerAssessmentBodyPronunciationMax = 1;
+
+export const submitBeginnerAssessmentBodySentenceUnderstandingMin = 0;
+export const submitBeginnerAssessmentBodySentenceUnderstandingMax = 1;
+
+export const submitBeginnerAssessmentBodyAlphabetRecognitionMin = 0;
+export const submitBeginnerAssessmentBodyAlphabetRecognitionMax = 1;
+
+
+
+export const SubmitBeginnerAssessmentBody = zod.object({
+  "wordRecognition": zod.number().min(submitBeginnerAssessmentBodyWordRecognitionMin).max(submitBeginnerAssessmentBodyWordRecognitionMax),
+  "listening": zod.number().min(submitBeginnerAssessmentBodyListeningMin).max(submitBeginnerAssessmentBodyListeningMax),
+  "repeating": zod.number().min(submitBeginnerAssessmentBodyRepeatingMin).max(submitBeginnerAssessmentBodyRepeatingMax),
+  "pronunciation": zod.number().min(submitBeginnerAssessmentBodyPronunciationMin).max(submitBeginnerAssessmentBodyPronunciationMax),
+  "sentenceUnderstanding": zod.number().min(submitBeginnerAssessmentBodySentenceUnderstandingMin).max(submitBeginnerAssessmentBodySentenceUnderstandingMax),
+  "alphabetRecognition": zod.number().min(submitBeginnerAssessmentBodyAlphabetRecognitionMin).max(submitBeginnerAssessmentBodyAlphabetRecognitionMax),
+  "language": zod.enum(['hindi', 'roman_hindi', 'urdu']).optional()
+})
+
+export const SubmitBeginnerAssessmentResponse = zod.object({
+  "level": zod.enum(['level_0', 'level_1']),
+  "assessmentCompleted": zod.boolean(),
+  "sessionsCompleted": zod.number()
+})
+
+
+/**
+ * @summary Record a voice-first beginner practice attempt
+ */
+
+export const recordBeginnerPracticeBodyPronunciationScoreMin = 0;
+export const recordBeginnerPracticeBodyPronunciationScoreMax = 100;
+
+
+
+export const RecordBeginnerPracticeBody = zod.object({
+  "itemId": zod.string().min(1),
+  "kind": zod.enum(['word', 'sentence', 'listening', 'pronunciation', 'conversation']),
+  "correct": zod.boolean(),
+  "pronunciationScore": zod.number().min(recordBeginnerPracticeBodyPronunciationScoreMin).max(recordBeginnerPracticeBodyPronunciationScoreMax).optional()
+})
+
+export const RecordBeginnerPracticeResponse = zod.object({
+  "profile": zod.object({
+  "level": zod.enum(['level_0', 'level_1']),
+  "assessmentCompleted": zod.boolean(),
+  "sessionsCompleted": zod.number()
+}),
+  "lesson": zod.object({
+  "title": zod.string(),
+  "durationMinutes": zod.number(),
+  "flow": zod.array(zod.string()),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['word', 'sentence']),
+  "level": zod.enum(['level_0', 'level_1']),
+  "prompt": zod.string(),
+  "english": zod.string(),
+  "picture": zod.object({
+  "id": zod.string(),
+  "icon": zod.string(),
+  "alt": zod.string()
+}),
+  "meaning": zod.string(),
+  "explanation": zod.string(),
+  "category": zod.string()
+})),
+  "startItemId": zod.string()
+}),
+  "revision": zod.array(zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['word', 'sentence']),
+  "level": zod.enum(['level_0', 'level_1']),
+  "prompt": zod.string(),
+  "english": zod.string(),
+  "picture": zod.object({
+  "id": zod.string(),
+  "icon": zod.string(),
+  "alt": zod.string()
+}),
+  "meaning": zod.string(),
+  "explanation": zod.string(),
+  "category": zod.string()
+})),
+  "summary": zod.object({
+  "wordsLearned": zod.number(),
+  "sentencesPracticed": zod.number(),
+  "conversationsPracticed": zod.number(),
+  "pronunciationMistakes": zod.number(),
+  "sentenceMistakes": zod.number(),
+  "weakItems": zod.array(zod.string())
+})
+})
 
 

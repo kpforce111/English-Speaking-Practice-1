@@ -64,6 +64,51 @@ export interface SubscriptionDetails {
   cancelPending: boolean;
 }
 
+export type SubscriptionProductBoxId = typeof SubscriptionProductBoxId[keyof typeof SubscriptionProductBoxId];
+
+
+export const SubscriptionProductBoxId = {
+  start_zero: 'start_zero',
+  advanced: 'advanced',
+} as const;
+
+export type SubscriptionProductBox = { [key: string]: unknown };
+
+export interface SubscriptionProduct {
+  boxId: SubscriptionProductBoxId;
+  box: SubscriptionProductBox;
+  /** @nullable */
+  provider?: string | null;
+  plan: string;
+  /** @nullable */
+  selectedPlan?: string | null;
+  status: string;
+  providerStatus: string;
+  /** @nullable */
+  providerSubscriptionId?: string | null;
+  /** @nullable */
+  trialEndsAt?: string | null;
+  /** @nullable */
+  currentPeriodEndsAt?: string | null;
+  cancelPending: boolean;
+}
+
+export type SubscriptionEnvelopeStatus = typeof SubscriptionEnvelopeStatus[keyof typeof SubscriptionEnvelopeStatus];
+
+
+export const SubscriptionEnvelopeStatus = {
+  available: 'available',
+  none: 'none',
+} as const;
+
+export interface SubscriptionEnvelope {
+  subscriptions: SubscriptionProduct[];
+  trialUsed: boolean;
+  /** @nullable */
+  activeTrialEndsAt: string | null;
+  status: SubscriptionEnvelopeStatus;
+}
+
 export type EmptySubscriptionStatus = typeof EmptySubscriptionStatus[keyof typeof EmptySubscriptionStatus];
 
 
@@ -99,6 +144,168 @@ export interface CancellationResponse {
   accessUntil?: string | null;
 }
 
+export type BeginnerProfileLevel = typeof BeginnerProfileLevel[keyof typeof BeginnerProfileLevel];
+
+
+export const BeginnerProfileLevel = {
+  level_0: 'level_0',
+  level_1: 'level_1',
+} as const;
+
+export interface BeginnerProfile {
+  level: BeginnerProfileLevel;
+  assessmentCompleted: boolean;
+  sessionsCompleted: number;
+}
+
+export type BeginnerAssessmentInputLanguage = typeof BeginnerAssessmentInputLanguage[keyof typeof BeginnerAssessmentInputLanguage];
+
+
+export const BeginnerAssessmentInputLanguage = {
+  hindi: 'hindi',
+  roman_hindi: 'roman_hindi',
+  urdu: 'urdu',
+} as const;
+
+export interface BeginnerAssessmentInput {
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  wordRecognition: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  listening: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  repeating: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  pronunciation: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  sentenceUnderstanding: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  alphabetRecognition: number;
+  language?: BeginnerAssessmentInputLanguage;
+}
+
+export type BeginnerPracticeInputKind = typeof BeginnerPracticeInputKind[keyof typeof BeginnerPracticeInputKind];
+
+
+export const BeginnerPracticeInputKind = {
+  word: 'word',
+  sentence: 'sentence',
+  listening: 'listening',
+  pronunciation: 'pronunciation',
+  conversation: 'conversation',
+} as const;
+
+export interface BeginnerPracticeInput {
+  /** @minLength 1 */
+  itemId: string;
+  kind: BeginnerPracticeInputKind;
+  correct: boolean;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  pronunciationScore?: number;
+}
+
+export type BeginnerItemKind = typeof BeginnerItemKind[keyof typeof BeginnerItemKind];
+
+
+export const BeginnerItemKind = {
+  word: 'word',
+  sentence: 'sentence',
+} as const;
+
+export type BeginnerItemLevel = typeof BeginnerItemLevel[keyof typeof BeginnerItemLevel];
+
+
+export const BeginnerItemLevel = {
+  level_0: 'level_0',
+  level_1: 'level_1',
+} as const;
+
+export interface BeginnerPicture {
+  id: string;
+  icon: string;
+  alt: string;
+}
+
+export interface BeginnerItem {
+  id: string;
+  kind: BeginnerItemKind;
+  level: BeginnerItemLevel;
+  prompt: string;
+  english: string;
+  picture: BeginnerPicture;
+  meaning: string;
+  explanation: string;
+  category: string;
+}
+
+export interface BeginnerLesson {
+  title: string;
+  durationMinutes: number;
+  flow: string[];
+  items: BeginnerItem[];
+  startItemId: string;
+}
+
+export interface BeginnerSummary {
+  wordsLearned: number;
+  sentencesPracticed: number;
+  conversationsPracticed: number;
+  pronunciationMistakes: number;
+  sentenceMistakes: number;
+  weakItems: string[];
+}
+
+export interface BeginnerOverview {
+  profile: BeginnerProfile;
+  lesson: BeginnerLesson;
+  revision: BeginnerItem[];
+  summary: BeginnerSummary;
+}
+
+export type TrialProductAccessBoxId = typeof TrialProductAccessBoxId[keyof typeof TrialProductAccessBoxId];
+
+
+export const TrialProductAccessBoxId = {
+  start_zero: 'start_zero',
+  advanced: 'advanced',
+} as const;
+
+export type TrialProductAccessBox = { [key: string]: unknown };
+
+export interface TrialProductAccess {
+  boxId: TrialProductAccessBoxId;
+  box: TrialProductAccessBox;
+  plan: string;
+  status: string;
+  /** @nullable */
+  trialEndsAt?: string | null;
+}
+
+export interface TrialStartResponse {
+  activeTrialEndsAt: string;
+  subscriptions: TrialProductAccess[];
+}
+
 export type GetPracticeSession200 = { [key: string]: unknown };
 
 export type ExportAccountData200 = { [key: string]: unknown };
@@ -107,8 +314,8 @@ export type CancelCurrentSubscriptionBodyBoxId = typeof CancelCurrentSubscriptio
 
 
 export const CancelCurrentSubscriptionBodyBoxId = {
-  read_write: 'read_write',
-  audio_first: 'audio_first',
+  start_zero: 'start_zero',
+  advanced: 'advanced',
 } as const;
 
 export type CancelCurrentSubscriptionBody = {
@@ -212,8 +419,8 @@ export type CreatePremiumCheckoutBodyBoxId = typeof CreatePremiumCheckoutBodyBox
 
 
 export const CreatePremiumCheckoutBodyBoxId = {
-  read_write: 'read_write',
-  audio_first: 'audio_first',
+  start_zero: 'start_zero',
+  advanced: 'advanced',
 } as const;
 
 export type CreatePremiumCheckoutBody = {

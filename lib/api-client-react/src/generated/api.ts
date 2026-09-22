@@ -22,6 +22,10 @@ import type {
 import type {
   AssessPronunciation200,
   AssessPronunciationBody,
+  BeginnerAssessmentInput,
+  BeginnerOverview,
+  BeginnerPracticeInput,
+  BeginnerProfile,
   CancelCurrentSubscriptionBody,
   CancellationResponse,
   ChatMessageInput,
@@ -29,7 +33,6 @@ import type {
   CorrectPracticeSentence200,
   CorrectPracticeSentenceBody,
   CreatePremiumCheckoutBody,
-  EmptySubscription,
   ExportAccountData200,
   GetPracticeProgress200,
   GetPracticeSession200,
@@ -46,9 +49,10 @@ import type {
   SendRoleplayMessageBody,
   SendVoiceConversation200,
   SendVoiceConversationBody,
-  SubscriptionDetails,
+  SubscriptionEnvelope,
   TranslatePracticeText200,
-  TranslatePracticeTextBody
+  TranslatePracticeTextBody,
+  TrialStartResponse
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -462,11 +466,11 @@ export const getGetCurrentSubscriptionUrl = () => {
 }
 
 /**
- * @summary Get independently tracked subscriptions for both learning boxes
+ * @summary Get independently tracked subscriptions for both learning products
  */
-export const getCurrentSubscription = async ( options?: Parameters<typeof customFetch>[1]): Promise<SubscriptionDetails | EmptySubscription> => {
+export const getCurrentSubscription = async ( options?: Parameters<typeof customFetch>[1]): Promise<SubscriptionEnvelope> => {
 
-  return customFetch<SubscriptionDetails | EmptySubscription>(getGetCurrentSubscriptionUrl(),
+  return customFetch<SubscriptionEnvelope>(getGetCurrentSubscriptionUrl(),
   {
     ...options,
     method: 'GET'
@@ -509,7 +513,7 @@ export type GetCurrentSubscriptionQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Get independently tracked subscriptions for both learning boxes
+ * @summary Get independently tracked subscriptions for both learning products
  */
 
 export function useGetCurrentSubscription<TData = Awaited<ReturnType<typeof getCurrentSubscription>>, TError = ErrorType<unknown>>(
@@ -529,6 +533,77 @@ export function useGetCurrentSubscription<TData = Awaited<ReturnType<typeof getC
 
 
 
+
+export const getStartSharedTrialUrl = () => {
+
+
+
+
+  return `/api/trial/start`
+}
+
+/**
+ * @summary Start the one-time two-day trial for both learning products
+ */
+export const startSharedTrial = async ( options?: Parameters<typeof customFetch>[1]): Promise<TrialStartResponse> => {
+
+  return customFetch<TrialStartResponse>(getStartSharedTrialUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getStartSharedTrialMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startSharedTrial>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startSharedTrial>>, TError,void, TContext> => {
+
+const mutationKey = ['startSharedTrial'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startSharedTrial>>, void> = () => {
+
+
+          return  startSharedTrial(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartSharedTrialMutationResult = NonNullable<Awaited<ReturnType<typeof startSharedTrial>>>
+
+    export type StartSharedTrialMutationError = ErrorType<void>
+
+    /**
+ * @summary Start the one-time two-day trial for both learning products
+ */
+export const useStartSharedTrial = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startSharedTrial>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startSharedTrial>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getStartSharedTrialMutationOptions(options));
+    }
 
 export const getCancelCurrentSubscriptionUrl = () => {
 
@@ -1567,5 +1642,224 @@ export const useCreatePremiumCheckout = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getCreatePremiumCheckoutMutationOptions(options));
+    }
+
+export const getGetBeginnerOverviewUrl = () => {
+
+
+
+
+  return `/api/beginner/overview`
+}
+
+/**
+ * @summary Get the persisted Start from Zero profile and today's adaptive lesson
+ */
+export const getBeginnerOverview = async ( options?: Parameters<typeof customFetch>[1]): Promise<BeginnerOverview> => {
+
+  return customFetch<BeginnerOverview>(getGetBeginnerOverviewUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBeginnerOverviewQueryKey = () => {
+    return [
+    `/api/beginner/overview`
+    ] as const;
+    }
+
+
+export const getGetBeginnerOverviewQueryOptions = <TData = Awaited<ReturnType<typeof getBeginnerOverview>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBeginnerOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBeginnerOverviewQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBeginnerOverview>>> = ({ signal }) => getBeginnerOverview({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBeginnerOverview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBeginnerOverviewQueryResult = NonNullable<Awaited<ReturnType<typeof getBeginnerOverview>>>
+export type GetBeginnerOverviewQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the persisted Start from Zero profile and today's adaptive lesson
+ */
+
+export function useGetBeginnerOverview<TData = Awaited<ReturnType<typeof getBeginnerOverview>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBeginnerOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBeginnerOverviewQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSubmitBeginnerAssessmentUrl = () => {
+
+
+
+
+  return `/api/beginner/assessment`
+}
+
+/**
+ * @summary Place a learner at Level 0 or Level 1
+ */
+export const submitBeginnerAssessment = async (beginnerAssessmentInput: BeginnerAssessmentInput, options?: Parameters<typeof customFetch>[1]): Promise<BeginnerProfile> => {
+
+  return customFetch<BeginnerProfile>(getSubmitBeginnerAssessmentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(beginnerAssessmentInput)
+  }
+);}
+
+
+
+
+
+export const getSubmitBeginnerAssessmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitBeginnerAssessment>>, TError,{data: BodyType<BeginnerAssessmentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitBeginnerAssessment>>, TError,{data: BodyType<BeginnerAssessmentInput>}, TContext> => {
+
+const mutationKey = ['submitBeginnerAssessment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitBeginnerAssessment>>, {data: BodyType<BeginnerAssessmentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitBeginnerAssessment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitBeginnerAssessmentMutationResult = NonNullable<Awaited<ReturnType<typeof submitBeginnerAssessment>>>
+    export type SubmitBeginnerAssessmentMutationBody = BodyType<BeginnerAssessmentInput>
+    export type SubmitBeginnerAssessmentMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Place a learner at Level 0 or Level 1
+ */
+export const useSubmitBeginnerAssessment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitBeginnerAssessment>>, TError,{data: BodyType<BeginnerAssessmentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitBeginnerAssessment>>,
+        TError,
+        {data: BodyType<BeginnerAssessmentInput>},
+        TContext
+      > => {
+      return useMutation(getSubmitBeginnerAssessmentMutationOptions(options));
+    }
+
+export const getRecordBeginnerPracticeUrl = () => {
+
+
+
+
+  return `/api/beginner/practice`
+}
+
+/**
+ * @summary Record a voice-first beginner practice attempt
+ */
+export const recordBeginnerPractice = async (beginnerPracticeInput: BeginnerPracticeInput, options?: Parameters<typeof customFetch>[1]): Promise<BeginnerOverview> => {
+
+  return customFetch<BeginnerOverview>(getRecordBeginnerPracticeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(beginnerPracticeInput)
+  }
+);}
+
+
+
+
+
+export const getRecordBeginnerPracticeMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordBeginnerPractice>>, TError,{data: BodyType<BeginnerPracticeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordBeginnerPractice>>, TError,{data: BodyType<BeginnerPracticeInput>}, TContext> => {
+
+const mutationKey = ['recordBeginnerPractice'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordBeginnerPractice>>, {data: BodyType<BeginnerPracticeInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  recordBeginnerPractice(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordBeginnerPracticeMutationResult = NonNullable<Awaited<ReturnType<typeof recordBeginnerPractice>>>
+    export type RecordBeginnerPracticeMutationBody = BodyType<BeginnerPracticeInput>
+    export type RecordBeginnerPracticeMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Record a voice-first beginner practice attempt
+ */
+export const useRecordBeginnerPractice = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordBeginnerPractice>>, TError,{data: BodyType<BeginnerPracticeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordBeginnerPractice>>,
+        TError,
+        {data: BodyType<BeginnerPracticeInput>},
+        TContext
+      > => {
+      return useMutation(getRecordBeginnerPracticeMutationOptions(options));
     }
 

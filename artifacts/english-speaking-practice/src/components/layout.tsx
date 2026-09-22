@@ -1,18 +1,14 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
-import { BarChart2, GraduationCap, Languages, LogIn, Menu, MessageCircle, Mic, Settings, Sparkles, Users, X } from 'lucide-react';
+import { Home, LogIn, Menu, Settings, Sparkles, X, Headphones, BookOpen } from 'lucide-react';
 import { Show, useUser } from '@clerk/react';
 import { useGetPracticeSession } from '@workspace/api-client-react';
 import rlloraLogo from '@assets/IMG-20260917-WA0002_1789621084381.jpg';
 
 const navItems = [
-  { href: '/home', label: 'Home', icon: Sparkles },
-  { href: '/chat', label: 'Chat', icon: MessageCircle },
-  { href: '/voice', label: 'Voice', icon: Mic },
-  { href: '/translate', label: 'Translate', icon: Languages },
-  { href: '/roleplays', label: 'Roleplays', icon: Users },
-  { href: '/lessons', label: 'Lessons', icon: GraduationCap },
-  { href: '/progress', label: 'Progress', icon: BarChart2 },
+  { href: '/home', label: 'Home', icon: Home },
+  { href: '/start-from-zero', label: '0 English', icon: Headphones },
+  { href: '/advanced', label: 'Advanced Coach', icon: BookOpen },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {

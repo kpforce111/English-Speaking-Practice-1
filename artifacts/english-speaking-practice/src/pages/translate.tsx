@@ -5,7 +5,7 @@ import { Languages, ArrowRightLeft, Copy, Check, Loader2 } from 'lucide-react';
 
 export function Translate() {
   return (
-    <PremiumGate featureName="Translation">
+    <PremiumGate productId="advanced" featureName="Translation">
       <TranslateTool />
     </PremiumGate>
   );
