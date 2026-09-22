@@ -27,3 +27,32 @@ AI_SECONDARY_MODEL = "gpt-5.4-mini"
 
 [nix]
 channel = "stable-25_05"
+modules = ["nodejs-24", "python-base-3.13", "postgresql-16"]
+
+[deployment]
+router = "application"
+deploymentTarget = "autoscale"
+
+[deployment.postBuild]
+args = ["pnpm", "store", "prune"]
+env = { "CI" = "true" }
+
+[workflows]
+runButton = "Project"
+
+[agent]
+stack = "PNPM_WORKSPACE"
+expertMode = true
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
+
+[userenv]
+
+[userenv.shared]
+AI_PRIMARY_MODEL = "gpt-5-nano"
+AI_SECONDARY_MODEL = "gpt-5.4-mini"
+
+[nix]
+channel = "stable-25_05"
