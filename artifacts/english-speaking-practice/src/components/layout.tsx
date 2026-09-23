@@ -7,7 +7,7 @@ import rlloraLogo from '@assets/IMG-20260917-WA0002_1789621084381.jpg';
 
 const navItems = [
   { href: '/home', label: 'Home', icon: Home },
-  { href: '/start-from-zero', label: '0 English', icon: Headphones },
+  { href: '/start-from-zero', label: 'Zero English', icon: Headphones },
   { href: '/advanced', label: 'Advanced Coach', icon: BookOpen },
 ];
 

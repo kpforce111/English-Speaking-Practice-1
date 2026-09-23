@@ -1,9 +1,10 @@
 import { ArrowRight, Mic, Sparkles, BookOpen, Headphones } from 'lucide-react';
 import { Link } from 'wouter';
 import { useListPremiumPlans } from '@workspace/api-client-react';
+import { planSavingsPercent } from '../lib/plan-savings';
 
 const boxes = [
-  { id: 'start_zero', label: '0 English / Start from Zero' },
+  { id: 'start_zero', label: 'Zero English / Start from Zero' },
   { id: 'advanced', label: 'Advanced English Coach' },
 ] as const;
 
@@ -48,7 +49,7 @@ export function Welcome() {
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                 <Headphones size={31} strokeWidth={2.5} />
               </div>
-              <h2 className="mt-4 text-2xl font-extrabold">0 English / Start from Zero</h2>
+              <h2 className="mt-4 text-2xl font-extrabold">Zero English / Start from Zero</h2>
               <p className="mt-2 text-base font-medium text-muted-foreground">Audio-first speaking and listening. Perfect for beginners who cannot read much English.</p>
               <span className="mt-5 inline-flex items-center gap-2 font-bold text-primary">Explore Beginners <ArrowRight size={18} /></span>
             </Link>
@@ -77,7 +78,14 @@ export function Welcome() {
                       <div key={plan.id} className={`rounded-2xl border p-5 ${plan.bestValue ? 'border-primary bg-primary/5' : 'border-border bg-background'}`}>
                         {plan.bestValue && <p className="mb-2 text-sm font-bold uppercase tracking-wide text-primary">Best value</p>}
                         <h3 className="text-xl font-bold capitalize">{plan.id}</h3>
-                        <p className="mt-3 text-3xl font-bold">₹{(plan.amountPaise / 100).toLocaleString('en-IN')}</p>
+                        <p className="mt-3 text-3xl font-bold">
+                          ₹{(plan.amountPaise / 100).toLocaleString('en-IN')}
+                          {plan.id !== 'monthly' && <span className="text-base"> · Save {planSavingsPercent(
+                            boxPlans[box.id].find((item: any) => item.id === 'monthly').amountPaise,
+                            plan.amountPaise,
+                            plan.id === 'quarterly' ? 3 : 12
+                          )}%</span>}
+                        </p>
                         <p className="mt-1 text-base font-semibold text-muted-foreground">{plan.id === 'monthly' ? 'per month' : plan.id === 'quarterly' ? 'every 3 months' : 'every 12 months'}</p>
                         <p className="mt-5 text-sm font-medium text-foreground">Full Premium access to {box.label}.</p>
                       </div>

@@ -4,11 +4,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Sparkles, Check, Loader2, AlertCircle, ShieldCheck, Globe, LogOut } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@clerk/react';
+import { planSavingsPercent } from '../lib/plan-savings';
 
 type BoxId = 'start_zero' | 'advanced';
 
 const LEARNING_BOXES: Array<{ id: BoxId; label: string; description: string }> = [
-  { id: 'start_zero', label: '0 English / Start from Zero', description: 'Audio-first speaking and listening with minimal reading.' },
+  { id: 'start_zero', label: 'Zero English / Start from Zero', description: 'Audio-first speaking and listening with minimal reading.' },
   { id: 'advanced', label: 'Advanced English Coach', description: 'Text-supported speaking, corrections, and lessons.' },
 ];
 
@@ -168,7 +169,14 @@ export function Pricing() {
                       >
                         {plan.bestValue && <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-secondary">Best value</span>}
                         <span className="block text-[12px] font-semibold capitalize">{plan.id}</span>
-                        <span className="mt-1 block text-[13px] font-bold">{`₹${(plan.amountPaise / 100).toLocaleString('en-IN')}`}</span>
+                        <span className="mt-1 block text-[13px] font-bold">
+                          ₹{(plan.amountPaise / 100).toLocaleString('en-IN')}
+                          {plan.id !== 'monthly' && ` · Save ${planSavingsPercent(
+                            boxPlans[box.id].find((item: any) => item.id === 'monthly').amountPaise,
+                            plan.amountPaise,
+                            plan.id === 'quarterly' ? 3 : 12
+                          )}%`}
+                        </span>
                       </button>
                     ))}
                   </div>

@@ -26,12 +26,12 @@ const plans = {
   start_zero: {
     monthly: { amountPaise: 34900, label: "Monthly: ₹349/month — cancel anytime." },
     quarterly: { amountPaise: 89900, label: "Quarterly: ₹899 / 3 months (Save 14%) — cancel anytime." },
-    yearly: { amountPaise: 299900, label: "Yearly: ₹2,999 / 12 months (Save 37%, Best Value) — cancel anytime." },
+    yearly: { amountPaise: 299900, label: "Yearly: ₹2,999 / 12 months (Save 28%, Best Value) — cancel anytime." },
   },
   advanced: {
     monthly: { amountPaise: 39900, label: "Monthly: ₹399/month — cancel anytime." },
-    quarterly: { amountPaise: 99900, label: "Quarterly: ₹999 / 3 months — cancel anytime." },
-    yearly: { amountPaise: 349900, label: "Yearly: ₹3,499 / 12 months (Best Value) — cancel anytime." },
+    quarterly: { amountPaise: 99900, label: "Quarterly: ₹999 / 3 months (Save 17%) — cancel anytime." },
+    yearly: { amountPaise: 349900, label: "Yearly: ₹3,499 / 12 months (Save 27%, Best Value) — cancel anytime." },
   },
 } as const;
 

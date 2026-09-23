@@ -3,7 +3,7 @@ import { pool } from "@workspace/db";
 export const learningBoxes = {
   start_zero: {
     id: "start_zero",
-    label: "0 English / Start from Zero",
+    label: "Zero English / Start from Zero",
     description: "Voice-first, picture-supported English for complete beginners.",
   },
   advanced: {

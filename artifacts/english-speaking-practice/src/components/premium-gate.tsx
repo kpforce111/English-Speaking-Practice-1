@@ -25,7 +25,7 @@ export function PremiumGate({ children, featureName, productId }: { children: Re
   if (!hasAccess || (isError && (error as any)?.status === 401)) {
     return (
       <div className="flex h-full min-h-[60vh] flex-col items-center justify-center p-6 text-center">
-        <TrialAccessPanel boxName={featureName || (productId === 'advanced' ? "Advanced English Coach" : "0 English / Start from Zero")} />
+        <TrialAccessPanel boxName={featureName || (productId === 'advanced' ? "Advanced English Coach" : "Zero English / Start from Zero")} />
       </div>
     );
   }

@@ -38,7 +38,7 @@ export function StartFromZeroHome() {
     if (status === 401 || status === 402) {
       return (
         <main className="practice-page min-h-[100dvh] flex items-center justify-center px-5 md:px-10">
-          <TrialAccessPanel boxName="0 English / Start from Zero" />
+          <TrialAccessPanel boxName="Zero English / Start from Zero" />
         </main>
       );
     }
@@ -56,7 +56,7 @@ export function StartFromZeroHome() {
   if (!hasAccess) {
     return (
       <main className="practice-page min-h-[100dvh] flex items-center justify-center px-5 md:px-10">
-        <TrialAccessPanel boxName="0 English / Start from Zero" />
+        <TrialAccessPanel boxName="Zero English / Start from Zero" />
       </main>
     );
   }
@@ -79,7 +79,7 @@ export function StartFromZeroHome() {
           <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
             <Star size={16} /> {levelDisplay} • {levelText}
           </div>
-          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">0 English Practice</h1>
+          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Zero English Practice</h1>
           <p className="mt-3 text-base font-medium text-muted-foreground">
             Rozana practice karein aur English bolna seekhein.
           </p>

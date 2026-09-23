@@ -19,7 +19,7 @@ export function Dashboard() {
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                 <Headphones size={32} strokeWidth={2.5} />
               </div>
-              <h2 className="mt-6 text-2xl font-extrabold md:text-3xl">0 English / Start from Zero</h2>
+              <h2 className="mt-6 text-2xl font-extrabold md:text-3xl">Zero English / Start from Zero</h2>
               <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">
                 Audio-first practice for beginners. Listen, understand, speak, and improve.
               </p>
