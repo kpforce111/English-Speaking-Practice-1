@@ -45,10 +45,10 @@ const termsFallback: LegalContent = {
 
 const refundFallback: LegalContent = {
   title: 'Refund Policy',
-  description: 'How cancellations, free trials, and subscription charges are handled.',
+  description: 'How cancellations, paid trials, and subscription charges are handled.',
   sections: [
     { heading: '1. Subscription Cancellation', body: 'You may cancel your subscription at any time through your account settings or by contacting Support. Cancellation stops the subscription from renewing at the end of your current billing period. You will continue to have access to Premium features until that paid period ends.' },
-    { heading: '2. Free Trial', body: 'The 2-day trial has no trial charge, collects no payment method, and unlocks both learning boxes. After it ends, you may explicitly choose and subscribe to either learning box.' },
+    { heading: '2. Two-Day Trial', body: 'The two-day trial costs ₹5 and, once payment checkout is available and payment is confirmed, unlocks both learning boxes. Trial checkout is currently unavailable. After it ends, you may explicitly choose and subscribe to either learning box; there is no automatic subscription.' },
     { heading: '3. Monthly, Quarterly, and Yearly Plans', body: 'Charges for monthly, quarterly, and yearly plans are non-refundable once a billing period has started. If you cancel after a renewal or initial subscription charge, no full or partial refund, credit, or prorated refund will be issued for the unused portion of that billing period. Your Premium access will remain available until the end of the paid period.' },
     { heading: '4. Billing Problems and Exceptional Reviews', body: 'If you believe you were charged more than once, charged after a timely cancellation, or charged without authorization, contact us through the Support page as soon as possible. We will review verified billing errors and may issue a refund where appropriate. Nothing in this policy limits any refund rights required by applicable law.' },
     { heading: '5. How to Request a Review', body: 'Submit your request through the Rllora AI Support page with the account used for the purchase, the charge date, the plan, and a brief explanation. Do not include your full card number, UPI PIN, password, or other sensitive payment credentials.' },

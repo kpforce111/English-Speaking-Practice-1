@@ -106,39 +106,6 @@ async function grantSharedTrialOnClient(client: { query: (text: string, values?:
   );
 }
 
-export async function startSharedTrial(userId: string) {
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [userId]);
-    const state = (await client.query(
-      `SELECT
-         COUNT(*) FILTER (WHERE trial_ends_at IS NOT NULL OR status = 'pending_payment')::int AS used_count,
-         MAX(trial_ends_at) FILTER (WHERE trial_ends_at > NOW()) AS active_trial_ends_at
-       FROM box_subscriptions WHERE user_id = $1`,
-      [userId],
-    ) as { rows: Array<{ used_count: number; active_trial_ends_at: Date | null }> }).rows[0];
-    if (state?.active_trial_ends_at) {
-      await grantSharedTrialOnClient(client, userId, new Date(state.active_trial_ends_at));
-      await client.query("COMMIT");
-      return { created: false, activeTrialEndsAt: new Date(state.active_trial_ends_at) };
-    }
-    if (Number(state?.used_count || 0) > 0) {
-      await client.query("ROLLBACK");
-      return { created: false, used: true, activeTrialEndsAt: null };
-    }
-    const trialEndsAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
-    await grantSharedTrialOnClient(client, userId, trialEndsAt);
-    await client.query("COMMIT");
-    return { created: true, used: false, activeTrialEndsAt: trialEndsAt };
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-
 export function effectiveBoxStatus<T extends Record<string, unknown>>(row: T): T & {
   effectivePlan: unknown;
   effectiveStatus: string;

@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useListPremiumPlans, useListPaymentOptions, useCreatePremiumCheckout, useGetCurrentSubscription, useCancelCurrentSubscription, useStartSharedTrial, getGetPracticeSessionQueryKey, getGetCurrentSubscriptionQueryKey, getGetBeginnerOverviewQueryKey } from '@workspace/api-client-react';
+import { useListPremiumPlans, useListPaymentOptions, useCreatePremiumCheckout, useGetCurrentSubscription, useCancelCurrentSubscription } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Sparkles, Check, Loader2, AlertCircle, ShieldCheck, Globe, LogOut } from 'lucide-react';
-import { useLocation } from 'wouter';
-import { useAuth } from '@clerk/react';
 import { planSavingsPercent } from '../lib/plan-savings';
 
 type BoxId = 'start_zero' | 'advanced';
@@ -40,10 +38,7 @@ export function Pricing() {
   const { data: subData, isLoading: loadingSub } = useGetCurrentSubscription();
   const checkout = useCreatePremiumCheckout();
   const cancelSub = useCancelCurrentSubscription();
-  const startTrial = useStartSharedTrial();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
-  const { isSignedIn } = useAuth();
 
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'quarterly' | 'yearly'>('yearly');
   const [selectedBox, setSelectedBox] = useState<BoxId>('start_zero');
@@ -55,7 +50,7 @@ export function Pricing() {
   const paymentOptions = (paymentOptionsData as any)?.options || [];
   const paymentNote = (paymentOptionsData as any)?.note || '';
 
-  const trialText = (plansData as any)?.trial || "Start with 2 days of full access to both learning boxes. No trial charge.";
+  const trialText = (plansData as any)?.trial || "₹5 for 2 days of access to both learning boxes. Available after payment setup; no automatic subscription afterward.";
 
   const subscriptions = (subData as any)?.subscriptions || [];
   const subscription = subscriptions.find((item: any) => item.boxId === selectedBox);
@@ -69,21 +64,7 @@ export function Pricing() {
   const handleAction = () => {
     setError(null);
     if (trialAvailableToday) {
-      if (!isSignedIn) {
-        setLocation('/sign-up?redirect_url=/pricing');
-        return;
-      }
-      startTrial.mutate(undefined, {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetPracticeSessionQueryKey() });
-          queryClient.invalidateQueries({ queryKey: getGetCurrentSubscriptionQueryKey() });
-          queryClient.invalidateQueries({ queryKey: getGetBeginnerOverviewQueryKey() });
-          setLocation(selectedBox === 'start_zero' ? '/start-from-zero' : '/advanced');
-        },
-        onError: (err: any) => {
-          setError(err.message || 'An error occurred while starting your trial.');
-        }
-      });
+      setError('The ₹5 trial checkout is unavailable while PhonePe approval is pending. No payment or access has been started.');
       return;
     }
 
@@ -348,11 +329,11 @@ export function Pricing() {
                 <div className="border-t border-border pt-6">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[14px] font-medium text-muted-foreground">Today's total</span>
-                    <span className="font-semibold text-2xl">{trialAvailableToday ? '₹0' : selectedPlanAmount}</span>
+                     <span className="font-semibold text-2xl">{trialAvailableToday ? '₹5' : selectedPlanAmount}</span>
                   </div>
                   <p className="text-[13px] text-muted-foreground mb-6">
                     {trialAvailableToday
-                      ? 'No payment method is collected. After the shared 2-day trial, choose a box and subscribe only if you want to continue.'
+                       ? 'Pay ₹5 once for 2 days of access to both boxes. No automatic subscription follows. Checkout is unavailable until PhonePe is approved.'
                       : 'Your shared trial has already been used. This box will start its paid billing period today.'}
                   </p>
 
@@ -365,11 +346,11 @@ export function Pricing() {
 
                   <button
                     onClick={handleAction}
-                    disabled={startTrial.isPending || checkout.isPending || (!trialAvailableToday && (!selectedProvider || !selectedPlanData))}
+                     disabled={checkout.isPending || !paymentOptions.some((option: any) => option.available) || (!trialAvailableToday && (!selectedProvider || !selectedPlanData))}
                     className={`${trialAvailableToday ? 'brand-gradient-button' : 'bg-primary text-primary-foreground hover:bg-primary/90'} flex w-full items-center justify-center gap-2 rounded-xl px-6 py-4 text-[15px] font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
-                    {(startTrial.isPending || checkout.isPending) && <Loader2 size={16} className="animate-spin" />}
-                    {trialAvailableToday ? 'Continue with Free Trial' : `Subscribe for ${selectedPlanAmount}`}
+                     {checkout.isPending && <Loader2 size={16} className="animate-spin" />}
+                     {trialAvailableToday ? 'Pay ₹5 for 2-Day Trial' : `Subscribe for ${selectedPlanAmount}`}
                   </button>
                   
                   <div className="mt-4 flex items-center justify-center gap-1.5 text-[13px] font-medium text-muted-foreground/60">

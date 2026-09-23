@@ -543,7 +543,7 @@ export const getStartSharedTrialUrl = () => {
 }
 
 /**
- * @summary Start the one-time two-day trial for both learning products
+ * @summary Start the one-time paid two-day trial for both learning products after verified payment
  */
 export const startSharedTrial = async ( options?: Parameters<typeof customFetch>[1]): Promise<TrialStartResponse> => {
 
@@ -592,7 +592,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type StartSharedTrialMutationError = ErrorType<void>
 
     /**
- * @summary Start the one-time two-day trial for both learning products
+ * @summary Start the one-time paid two-day trial for both learning products after verified payment
  */
 export const useStartSharedTrial = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startSharedTrial>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}

@@ -99,15 +99,16 @@ paths:
     post:
       operationId: startSharedTrial
       tags: [practice]
-      summary: Start the one-time two-day trial for both learning products
+      summary: Start the one-time paid two-day trial for both learning products after verified payment
       responses:
         "200":
-          description: Active shared trial and both product access states
+          description: Reserved for a confirmed ₹5 payment; checkout is not yet available
           content:
             application/json:
               schema: { $ref: "#/components/schemas/TrialStartResponse" }
         "401": { description: Authentication required }
         "409": { description: Trial has already been used or expired }
+        "503": { description: Payment checkout is unavailable; no trial is granted }
   /subscription/cancel:
     post:
       operationId: cancelCurrentSubscription

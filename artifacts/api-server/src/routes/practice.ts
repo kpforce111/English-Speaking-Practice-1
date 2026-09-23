@@ -14,7 +14,6 @@ import {
   learningBoxes,
   parseLearningBoxId,
   sharedTrialState,
-  startSharedTrial,
   strongestLogicalRow,
 } from "../lib/boxSubscriptions";
 
@@ -163,27 +162,13 @@ router.delete("/account", async (req, res) => {
 
 router.post("/trial/start", async (req, res): Promise<void> => {
   if (!authenticatedClerkUserId(req)) {
-    res.status(401).json({ error: "Sign in before starting your free trial.", code: "SIGN_IN_REQUIRED" });
+    res.status(401).json({ error: "Sign in before purchasing your ₹5 trial.", code: "SIGN_IN_REQUIRED" });
     return;
   }
-  const userId = await getUserId(req, res);
-  const trial = await startSharedTrial(userId);
-  if (trial.used) {
-    res.status(409).json({ error: "Your 2-day free trial has already been used or expired.", code: "TRIAL_ALREADY_USED" });
-    return;
-  }
-  const rows = await pool.query("SELECT * FROM box_subscriptions WHERE user_id = $1", [userId]);
-  const subscriptions = (["start_zero", "advanced"] as const).map((boxId) => {
-    const row = strongestLogicalRow(rows.rows, boxId);
-    return {
-      boxId,
-      box: learningBoxes[boxId],
-      plan: row?.effectivePlan || "trial",
-      status: row?.effectiveStatus || "trialing",
-      trialEndsAt: row?.trial_ends_at ? new Date(row.trial_ends_at).toISOString() : trial.activeTrialEndsAt?.toISOString() || null,
-    };
+  res.status(503).json({
+    error: "The ₹5 two-day trial is unavailable until payment checkout is approved. No trial access has been activated and no payment has been taken.",
+    code: "PAYMENTS_INACTIVE",
   });
-  res.json({ activeTrialEndsAt: trial.activeTrialEndsAt?.toISOString(), subscriptions });
 });
 
 router.get("/subscription", async (req, res) => {
@@ -404,7 +389,7 @@ router.get("/weekly-report", async (req, res) => {
 });
 
 router.get("/plans", (_req, res) => res.json({
-  trial: "Start with 2 days of full access to both learning products. No trial charge.",
+  trial: "₹5 for 2 days of access to both learning boxes. Available after payment setup; no automatic subscription afterward.",
   boxes: Object.values(learningBoxes),
   plans: listPlans("start_zero"),
   boxPlans: { start_zero: listPlans("start_zero"), advanced: listPlans("advanced") },

@@ -35,12 +35,12 @@ export function Welcome() {
             </div>
             <h1 className="text-3xl font-bold tracking-tight md:text-5xl">Welcome to Rllora AI English Speaking!</h1>
             <p className="mt-4 text-lg text-muted-foreground md:text-xl">
-              Choose your path to English fluency. Your free trial gives you access to both learning boxes for 2 days.
+              Choose your path to English fluency. Pay ₹5 once for 2 days of access to both learning boxes. Trial checkout opens after payment setup.
             </p>
 
             <Link href="/sign-up?redirect_url=/pricing" className="brand-gradient-button mx-auto mt-7 flex w-full max-w-xl flex-col items-center justify-center rounded-2xl px-6 py-4 shadow-lg transition-all hover:-translate-y-0.5">
-              <span className="text-lg font-extrabold md:text-xl">Create Account &amp; Start Free Trial</span>
-              <span className="mt-1 text-base font-semibold opacity-90">Get both learning boxes for 2 days</span>
+              <span className="text-lg font-extrabold md:text-xl">Create Account &amp; View ₹5 Trial</span>
+              <span className="mt-1 text-base font-semibold opacity-90">2 days · both learning boxes · payment currently unavailable</span>
             </Link>
           </div>
 
@@ -96,7 +96,7 @@ export function Welcome() {
             </div>
           </div>
           <div className="mt-8 overflow-x-auto rounded-2xl border border-secondary/20 bg-secondary/5 px-5 py-4 text-center text-foreground">
-            <p className="min-w-max text-base font-bold md:text-lg">No payment method is collected for the trial. Subscribe to one box only if you choose to continue.</p>
+            <p className="text-base font-bold md:text-lg">The 2-day trial costs ₹5. It does not automatically start a subscription. Payments are not available yet.</p>
           </div>
         </div>
       </section>

@@ -83,7 +83,7 @@ export const GetCurrentSubscriptionResponse = zod.object({
 
 
 /**
- * @summary Start the one-time two-day trial for both learning products
+ * @summary Start the one-time paid two-day trial for both learning products after verified payment
  */
 export const StartSharedTrialResponse = zod.object({
   "activeTrialEndsAt": zod.coerce.date(),
