@@ -2,6 +2,12 @@
 
 # compiled output
 dist
+artifacts/english-speaking-practice/android/.gradle/
+artifacts/english-speaking-practice/android/build/
+artifacts/english-speaking-practice/android/app/build/
+artifacts/english-speaking-practice/android/*.keystore
+artifacts/english-speaking-practice/android/*.jks
+artifacts/english-speaking-practice/android/local.properties
 tmp
 out-tsc
 *.tsbuildinfo
