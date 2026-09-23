@@ -50,6 +50,8 @@ import type {
   SendVoiceConversation200,
   SendVoiceConversationBody,
   SubscriptionEnvelope,
+  TranscribePracticeSpeech200,
+  TranscribePracticeSpeechBody,
   TranslatePracticeText200,
   TranslatePracticeTextBody,
   TrialStartResponse
@@ -745,6 +747,77 @@ export const useSendVoiceConversation = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getSendVoiceConversationMutationOptions(options));
+    }
+
+export const getTranscribePracticeSpeechUrl = () => {
+
+
+
+
+  return `/api/speech/transcribe`
+}
+
+/**
+ * @summary Transcribe recorded speech for an entitled learning box
+ */
+export const transcribePracticeSpeech = async (transcribePracticeSpeechBody: TranscribePracticeSpeechBody, options?: Parameters<typeof customFetch>[1]): Promise<TranscribePracticeSpeech200> => {
+
+  return customFetch<TranscribePracticeSpeech200>(getTranscribePracticeSpeechUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(transcribePracticeSpeechBody)
+  }
+);}
+
+
+
+
+
+export const getTranscribePracticeSpeechMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof transcribePracticeSpeech>>, TError,{data: BodyType<TranscribePracticeSpeechBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof transcribePracticeSpeech>>, TError,{data: BodyType<TranscribePracticeSpeechBody>}, TContext> => {
+
+const mutationKey = ['transcribePracticeSpeech'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof transcribePracticeSpeech>>, {data: BodyType<TranscribePracticeSpeechBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  transcribePracticeSpeech(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TranscribePracticeSpeechMutationResult = NonNullable<Awaited<ReturnType<typeof transcribePracticeSpeech>>>
+    export type TranscribePracticeSpeechMutationBody = BodyType<TranscribePracticeSpeechBody>
+    export type TranscribePracticeSpeechMutationError = ErrorType<void>
+
+    /**
+ * @summary Transcribe recorded speech for an entitled learning box
+ */
+export const useTranscribePracticeSpeech = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof transcribePracticeSpeech>>, TError,{data: BodyType<TranscribePracticeSpeechBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof transcribePracticeSpeech>>,
+        TError,
+        {data: BodyType<TranscribePracticeSpeechBody>},
+        TContext
+      > => {
+      return useMutation(getTranscribePracticeSpeechMutationOptions(options));
     }
 
 export const getCorrectPracticeSentenceUrl = () => {

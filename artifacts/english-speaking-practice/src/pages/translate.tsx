@@ -15,6 +15,8 @@ function TranslateTool() {
   const [sourceText, setSourceText] = useState('');
   const [direction, setDirection] = useState<'to_english' | 'to_roman'>('to_english');
   const [result, setResult] = useState<string | null>(null);
+  const [notes, setNotes] = useState('');
+  const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   
   const translate = useTranslatePracticeText();
@@ -22,13 +24,19 @@ function TranslateTool() {
   const handleTranslate = (e: FormEvent) => {
     e.preventDefault();
     if (!sourceText.trim() || translate.isPending) return;
+    setResult(null);
+    setNotes('');
+    setError('');
     
     translate.mutate(
-      { data: { text: sourceText.trim(), direction } },
+      { data: { text: sourceText.trim(), direction: direction === 'to_english' ? 'roman-hindi-to-english' : 'english-to-roman-hindi' } },
       {
-        onSuccess: (res: any) => {
-          setResult(res.translatedText || res.text || 'Translation completed.');
-        }
+        onSuccess: (res) => {
+          if (!res.translation?.trim()) { setError('No translation was returned. Please try again.'); return; }
+          setResult(res.translation);
+          setNotes(res.notes || '');
+        },
+        onError: (err) => setError(err.message || 'Translation failed. Please try again.'),
       }
     );
   };
@@ -45,6 +53,8 @@ function TranslateTool() {
     if (result) {
       setSourceText(result);
       setResult(null);
+      setNotes('');
+      setError('');
     }
   };
 
@@ -131,8 +141,10 @@ function TranslateTool() {
               <div className="h-full flex items-center justify-center text-muted-foreground/50">
                 <Loader2 size={24} className="animate-spin" />
               </div>
+            ) : error ? (
+              <p role="alert" className="text-sm text-destructive">{error}</p>
             ) : result ? (
-              <p className="text-lg text-foreground whitespace-pre-wrap">{result}</p>
+              <div><p className="text-lg text-foreground whitespace-pre-wrap">{result}</p>{notes && <p className="mt-3 text-sm text-muted-foreground">{notes}</p>}</div>
             ) : (
               <p className="text-lg text-muted-foreground/40 italic">Translation will appear here...</p>
             )}

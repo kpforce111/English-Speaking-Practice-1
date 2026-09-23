@@ -3,6 +3,7 @@ import { useSendVoiceConversation, useAssessPronunciation, useGetPracticeSession
 import { useQueryClient } from '@tanstack/react-query';
 import { PremiumGate } from '@/components/premium-gate';
 import { Mic, Square, Play, Sparkles, Loader2, AlertCircle, RefreshCw, X } from 'lucide-react';
+import { startRecordedAudio, type RecordedAudio } from '@/lib/recorded-audio';
 
 function stripEmojis(str: string) {
   return str.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').replace(/\uFE0F/g, '');
@@ -26,7 +27,6 @@ function VoicePractice() {
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [aiAudioUrl, setAiAudioUrl] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<string | null>(null);
   const [aiReply, setAiReply] = useState<string | null>(null);
@@ -34,8 +34,7 @@ function VoicePractice() {
   const [pronunciation, setPronunciation] = useState<any | null>(null);
   const [pronunciationError, setPronunciationError] = useState<string | null>(null);
   
-  const mediaRecorder = useRef<MediaRecorder | null>(null);
-  const audioChunks = useRef<Blob[]>([]);
+  const recording = useRef<Awaited<ReturnType<typeof startRecordedAudio>> | null>(null);
   const timerInterval = useRef<number | null>(null);
   const audioElement = useRef<HTMLAudioElement | null>(null);
   
@@ -52,32 +51,7 @@ function VoicePractice() {
       setPronunciation(null);
       setPronunciationError(null);
       
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          audioChunks.current.push(e.data);
-        }
-      };
-      
-      recorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
-        const url = URL.createObjectURL(audioBlob);
-        setAudioUrl(url);
-        
-        // Convert blob to base64
-        const reader = new FileReader();
-        reader.readAsDataURL(audioBlob);
-        reader.onloadend = () => {
-          const base64data = (reader.result as string).split(',')[1];
-          processVoice(base64data, recordingTime);
-        };
-      };
-      
-      audioChunks.current = [];
-      recorder.start();
-      mediaRecorder.current = recorder;
+       recording.current = await startRecordedAudio();
       setIsRecording(true);
       setRecordingTime(0);
       
@@ -90,27 +64,29 @@ function VoicePractice() {
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorder.current && isRecording) {
-      mediaRecorder.current.stop();
-      mediaRecorder.current.stream.getTracks().forEach(track => track.stop());
-      setIsRecording(false);
-      if (timerInterval.current) {
-        clearInterval(timerInterval.current);
-      }
+  const stopRecording = async () => {
+    const current = recording.current;
+    if (!current) return;
+    recording.current = null;
+    setIsRecording(false);
+    if (timerInterval.current) clearInterval(timerInterval.current);
+    try {
+      processVoice(await current.stop());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not record audio. Try again.');
     }
   };
 
-  const processVoice = (base64data: string, duration: number) => {
+  const processVoice = ({ audioBase64, mimeType }: RecordedAudio) => {
     sendVoice.mutate(
-      { data: { audioBase64: base64data, mimeType: 'audio/webm' } },
+      { data: { audioBase64, mimeType } },
       {
         onSuccess: (res: any) => {
           if (res.userTranscript) {
             setTranscript(res.userTranscript);
             
             pronunciationMutation.mutate(
-              { data: { audioBase64: base64data, mimeType: 'audio/webm', text: res.userTranscript } },
+               { data: { audioBase64, mimeType, text: res.userTranscript } },
               {
                 onSuccess: (pRes) => setPronunciation(pRes),
                 onError: () => setPronunciationError("Pronunciation feedback unavailable: Configuration missing or API error.")
@@ -141,13 +117,9 @@ function VoicePractice() {
   useEffect(() => {
     return () => {
       if (timerInterval.current) clearInterval(timerInterval.current);
-      if (mediaRecorder.current?.state === 'recording') {
-        mediaRecorder.current.stop();
-        mediaRecorder.current.stream.getTracks().forEach(track => track.stop());
-      }
-      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      recording.current?.cancel();
     };
-  }, [audioUrl]);
+  }, []);
 
   return (
     <div className="flex h-full flex-col px-4 py-6 md:px-10">

@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { Mic, Play, ArrowRight, Check, AlertCircle, Loader2 } from 'lucide-react';
-import { useSubmitBeginnerAssessment, BeginnerAssessmentInputLanguage } from '@workspace/api-client-react';
+import { useSubmitBeginnerAssessment, useTranscribePracticeSpeech, BeginnerAssessmentInputLanguage } from '@workspace/api-client-react';
 import { PremiumGate } from '@/components/premium-gate';
+import { startRecordedAudio } from '@/lib/recorded-audio';
 
 const LANGUAGES = [
   { id: 'hindi' as const, label: 'Hindi (हिंदी)', roman: 'Hindi' },
@@ -13,6 +14,9 @@ const LANGUAGES = [
 export function StartFromZeroAssessment() {
   const [, setLocation] = useLocation();
   const submitAssessment = useSubmitBeginnerAssessment();
+  const transcribe = useTranscribePracticeSpeech();
+  const recording = useRef<Awaited<ReturnType<typeof startRecordedAudio>> | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
   const [step, setStep] = useState<'language' | 'test'>('language');
   const [language, setLanguage] = useState<BeginnerAssessmentInputLanguage>('roman_hindi');
   
@@ -28,6 +32,8 @@ export function StartFromZeroAssessment() {
   const [error, setError] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [heardText, setHeardText] = useState('');
+
+  useEffect(() => () => recording.current?.cancel(), []);
   
   const handleStartTest = () => {
     setStep('test');
@@ -65,33 +71,35 @@ export function StartFromZeroAssessment() {
     window.speechSynthesis?.speak(new SpeechSynthesisUtterance(text));
   };
 
-  const recordPhrase = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      setError('Voice recognition is not available in this browser. You can skip this voice task.');
+  const recordPhrase = async () => {
+    setError(null);
+    if (recording.current) {
+      const current = recording.current;
+      recording.current = null;
+      setIsRecording(false);
+      try {
+        const audio = await current.stop();
+        const result = await transcribe.mutateAsync({ data: { ...audio, boxId: 'start_zero' } });
+        const transcript = result.transcript.toLowerCase().trim();
+        setHeardText(result.transcript);
+        const expected = ['i', 'want', 'water'];
+        const matched = expected.filter((word) => transcript.replace(/[^\p{L}\s]/gu, '').split(/\s+/).includes(word)).length;
+        const score = matched / expected.length;
+        advance({ repeating: score, pronunciation: score });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Microphone could not hear you. Please try again or skip.');
+      } finally { setIsListening(false); }
       return;
     }
-    setError(null);
     setHeardText('');
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-IN';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
-    recognition.onerror = () => {
+    setIsListening(true);
+    try {
+      recording.current = await startRecordedAudio();
+      setIsRecording(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Microphone unavailable. Check browser permissions.');
       setIsListening(false);
-      setError('Microphone could not hear you. Please try again or skip.');
-    };
-    recognition.onresult = (event: any) => {
-      const transcript = String(event.results?.[0]?.[0]?.transcript || '').toLowerCase().trim();
-      setHeardText(transcript);
-      const expected = ['i', 'want', 'water'];
-      const matched = expected.filter((word) => transcript.split(/\s+/).includes(word)).length;
-      const score = matched / expected.length;
-      advance({ repeating: score, pronunciation: score });
-    };
-    recognition.start();
+    }
   };
 
   if (step === 'language') {
@@ -202,12 +210,12 @@ export function StartFromZeroAssessment() {
               </button>
               <div className="mb-6 text-center"><h3 className="text-2xl font-bold text-foreground">“I want water”</h3></div>
               <h2 className="text-2xl font-bold">Repeat After Me</h2>
-              <p className="mt-2 text-base text-muted-foreground">{isListening ? 'Sun raha hoon… boliye.' : 'Mic dabayein aur sentence boliye.'}</p>
+               <p className="mt-2 text-base text-muted-foreground">{isRecording ? 'Sun raha hoon… boliye. Phir mic dabakar stop karein.' : isListening ? 'Awaaz process ho rahi hai…' : 'Mic dabayein aur sentence boliye.'}</p>
               {heardText && <p className="mt-3 rounded-xl bg-secondary/10 px-4 py-2 text-sm">Heard: {heardText}</p>}
               
               <div className="mt-8 flex flex-col items-center gap-3">
-                <button disabled={submitAssessment.isPending || isListening} onClick={recordPhrase} className="flex h-20 w-20 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg disabled:opacity-50">
-                  {submitAssessment.isPending || isListening ? <Loader2 size={24} className="animate-spin" /> : <Mic size={30} />}
+                 <button disabled={submitAssessment.isPending || (isListening && !isRecording)} onClick={recordPhrase} aria-label={isRecording ? 'Stop recording repeat after me' : 'Start recording repeat after me'} className="flex h-20 w-20 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg disabled:opacity-50">
+                   {submitAssessment.isPending || (isListening && !isRecording) ? <Loader2 size={24} className="animate-spin" /> : <Mic size={30} />}
                 </button>
                 <button disabled={submitAssessment.isPending || isListening} onClick={() => advance({ repeating: 0, pronunciation: 0 })} className="text-sm font-bold text-muted-foreground underline disabled:opacity-50">
                   Skip voice task

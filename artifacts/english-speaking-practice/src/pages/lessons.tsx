@@ -1,7 +1,8 @@
-import { useListDailyLessons, useRecordLessonAttempt } from '@workspace/api-client-react';
+import { useListDailyLessons, useRecordLessonAttempt, useTranscribePracticeSpeech } from '@workspace/api-client-react';
 import { PremiumGate } from '@/components/premium-gate';
-import { GraduationCap, Clock, CheckCircle2, PlayCircle, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { GraduationCap, Clock, CheckCircle2, PlayCircle, Loader2, Mic, Square } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { startRecordedAudio } from '@/lib/recorded-audio';
 
 export function Lessons() {
   return (
@@ -99,9 +100,17 @@ function LessonsList() {
 
 function LessonPlayer({ lesson, onBack }: { lesson: any, onBack: () => void }) {
   const attempt = useRecordLessonAttempt();
+  const transcribe = useTranscribePracticeSpeech();
+  const recording = useRef<Awaited<ReturnType<typeof startRecordedAudio>> | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [error, setError] = useState('');
   const [completed, setCompleted] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [step, setStep] = useState(0);
+
+  useEffect(() => () => recording.current?.cancel(), []);
 
   if (!lesson) return null;
 
@@ -115,7 +124,33 @@ function LessonPlayer({ lesson, onBack }: { lesson: any, onBack: () => void }) {
     if (step < steps.length - 1) {
       setStep(step + 1);
     } else {
+      if (!transcript) { setError('Please record a sentence before completing this lesson.'); return; }
       finishLesson();
+    }
+  };
+
+  const handleMicrophone = async () => {
+    setError('');
+    if (!recording.current) {
+      setIsStarting(true);
+      try {
+        recording.current = await startRecordedAudio();
+        setTranscript('');
+        setIsRecording(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Microphone unavailable. Check browser permissions.');
+      } finally { setIsStarting(false); }
+      return;
+    }
+    const current = recording.current;
+    recording.current = null;
+    setIsRecording(false);
+    try {
+      const audio = await current.stop();
+      const result = await transcribe.mutateAsync({ data: { ...audio, boxId: 'advanced' } });
+      setTranscript(result.transcript);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not understand the recording. Try again.');
     }
   };
 
@@ -124,7 +159,8 @@ function LessonPlayer({ lesson, onBack }: { lesson: any, onBack: () => void }) {
       onSuccess: (data) => {
         setResult(data);
         setCompleted(true);
-      }
+      },
+      onError: (err) => setError(err.message || 'Could not save lesson progress. Try again.'),
     });
   };
 
@@ -164,10 +200,23 @@ function LessonPlayer({ lesson, onBack }: { lesson: any, onBack: () => void }) {
         <p className="text-muted-foreground max-w-md mb-8">
           {currentStep.content}
         </p>
+
+        {currentStep.type === 'practice' && (
+          <div className="mb-6 flex w-full max-w-md flex-col items-center gap-3">
+            <button type="button" onClick={handleMicrophone} disabled={isStarting || transcribe.isPending}
+              aria-label={isRecording ? 'Stop recording lesson sentence' : 'Record lesson sentence'}
+              className="flex items-center gap-2 rounded-xl border border-primary px-5 py-3 font-semibold text-primary disabled:opacity-50">
+              {isStarting || transcribe.isPending ? <Loader2 size={20} className="animate-spin" /> : isRecording ? <Square size={20} /> : <Mic size={20} />}
+              {isStarting ? 'Starting microphone…' : transcribe.isPending ? 'Processing speech…' : isRecording ? 'Stop recording' : 'Record your sentence'}
+            </button>
+            {transcript && <p className="rounded-xl bg-primary/10 px-4 py-3 text-sm">You said: {transcript}</p>}
+          </div>
+        )}
+        {error && <p role="alert" className="mb-4 text-sm text-destructive">{error}</p>}
         
         <button 
           onClick={handleNext}
-          disabled={attempt.isPending}
+          disabled={attempt.isPending || transcribe.isPending || isRecording || (currentStep.type === 'practice' && !transcript)}
           className="flex items-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
         >
           {attempt.isPending ? <Loader2 size={16} className="animate-spin" /> : 

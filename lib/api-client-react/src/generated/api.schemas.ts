@@ -337,6 +337,25 @@ export type SendVoiceConversation200 = {
   secondsUsed?: number;
 };
 
+export type TranscribePracticeSpeechBodyBoxId = typeof TranscribePracticeSpeechBodyBoxId[keyof typeof TranscribePracticeSpeechBodyBoxId];
+
+
+export const TranscribePracticeSpeechBodyBoxId = {
+  start_zero: 'start_zero',
+  advanced: 'advanced',
+} as const;
+
+export type TranscribePracticeSpeechBody = {
+  boxId: TranscribePracticeSpeechBodyBoxId;
+  audioBase64: string;
+  mimeType: string;
+};
+
+export type TranscribePracticeSpeech200 = {
+  transcript: string;
+  secondsUsed: number;
+};
+
 export type CorrectPracticeSentenceBodyMode = typeof CorrectPracticeSentenceBodyMode[keyof typeof CorrectPracticeSentenceBodyMode];
 
 
@@ -352,12 +371,23 @@ export type CorrectPracticeSentenceBody = {
 
 export type CorrectPracticeSentence200 = { [key: string]: unknown };
 
+export type TranslatePracticeTextBodyDirection = typeof TranslatePracticeTextBodyDirection[keyof typeof TranslatePracticeTextBodyDirection];
+
+
+export const TranslatePracticeTextBodyDirection = {
+  'english-to-roman-hindi': 'english-to-roman-hindi',
+  'roman-hindi-to-english': 'roman-hindi-to-english',
+} as const;
+
 export type TranslatePracticeTextBody = {
   text: string;
-  direction?: string;
+  direction?: TranslatePracticeTextBodyDirection;
 };
 
-export type TranslatePracticeText200 = { [key: string]: unknown };
+export type TranslatePracticeText200 = {
+  translation: string;
+  notes: string;
+};
 
 export type AssessPronunciationBody = {
   text: string;

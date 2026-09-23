@@ -167,6 +167,38 @@ paths:
                   secondsUsed: { type: number }
         "402": { description: Premium required }
         "429": { description: Daily voice limit reached }
+  /speech/transcribe:
+    post:
+      operationId: transcribePracticeSpeech
+      tags: [practice]
+      summary: Transcribe recorded speech for an entitled learning box
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [boxId, audioBase64, mimeType]
+              properties:
+                boxId: { type: string, enum: [start_zero, advanced] }
+                audioBase64: { type: string }
+                mimeType: { type: string }
+      responses:
+        "200":
+          description: Recognized speech
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [transcript, secondsUsed]
+                properties:
+                  transcript: { type: string }
+                  secondsUsed: { type: number }
+        "400": { description: Invalid audio or box }
+        "402": { description: Learning box access required }
+        "422": { description: No speech detected }
+        "429": { description: Daily voice limit reached }
+        "503": { description: Speech processing unavailable }
   /correct:
     post:
       operationId: correctPracticeSentence
@@ -202,13 +234,18 @@ paths:
               required: [text]
               properties:
                 text: { type: string }
-                direction: { type: string }
+                direction: { type: string, enum: [english-to-roman-hindi, roman-hindi-to-english] }
       responses:
         "200":
           description: Translation
           content:
             application/json:
-              schema: { type: object, additionalProperties: true }
+              schema:
+                type: object
+                required: [translation, notes]
+                properties:
+                  translation: { type: string }
+                  notes: { type: string }
   /pronunciation:
     post:
       operationId: assessPronunciation

@@ -68,6 +68,14 @@ async function decodedAudio(audioBase64: unknown, mimeType: unknown) {
   } finally { await unlink(path).catch(() => undefined); }
 }
 
+function audioInputFailure(res: import("express").Response, error: unknown) {
+  const missingTool = error instanceof Error && "code" in error && error.code === "ENOENT";
+  res.status(missingTool ? 503 : 400).json({
+    error: missingTool ? "Audio processing is temporarily unavailable." : error instanceof Error ? error.message : "Invalid audio payload",
+    code: missingTool ? "AUDIO_TOOL_UNAVAILABLE" : "INVALID_AUDIO",
+  });
+}
+
 async function voiceModel(input: Buffer, format: "wav" | "mp3", history: Array<{ role: "user" | "assistant"; content: string }>) {
   const userTranscript = await speechToText(input, format);
   const assistantTranscript = await routeAiText({
@@ -224,10 +232,12 @@ router.post("/translate", async (req, res) => {
   const userId = await requireBoxAccess(req, res, "advanced"); if (!userId) return;
   const { text, direction = "english-to-roman-hindi" } = req.body || {};
   if (typeof text !== "string" || !text.trim()) { res.status(400).json({ error: "text is required" }); return; }
+  if (!["english-to-roman-hindi", "roman-hindi-to-english"].includes(direction)) { res.status(400).json({ error: "Invalid translation direction" }); return; }
   try {
     const result = await translateOrCorrect(`Translate ${direction === "roman-hindi-to-english" ? "Roman Hindi/Urdu to natural English" : "English to natural Roman Hindi/Urdu"}. Return {"translation": "...","notes":"..."}.`, text);
+    if (typeof result.translation !== "string" || !result.translation.trim()) throw new Error("Translation provider returned no translation");
     await recordEvent(userId, "translation", text, { direction });
-    res.json(result);
+    res.json({ translation: result.translation.trim(), notes: typeof result.notes === "string" ? result.notes : "" });
   } catch (error) { req.log.error({ error }, "translation failed"); res.status(503).json({ error: "Translation is temporarily unavailable." }); }
 });
 
@@ -248,7 +258,7 @@ router.post("/voice", async (req, res) => {
   let decoded: { input: Buffer; seconds: number };
   try {
     decoded = await decodedAudio(audioBase64, mimeType);
-  } catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : "Invalid audio payload" }); return; }
+  } catch (error) { audioInputFailure(res, error); return; }
   const reservation = await reserveVoice(userId, decoded.seconds);
   if (!reservation.reserved) { res.status(429).json({ error: "You've used your 15-minute Premium voice limit for today.", code: "VOICE_LIMIT" }); return; }
   try {
@@ -263,12 +273,34 @@ router.post("/voice", async (req, res) => {
   }
 });
 
+router.post("/speech/transcribe", async (req, res) => {
+  const boxId = parseLearningBoxId(req.body?.boxId);
+  if (!boxId) { res.status(400).json({ error: "boxId must be start_zero or advanced" }); return; }
+  const userId = await requireBoxAccess(req, res, boxId); if (!userId) return;
+  let decoded: { input: Buffer; seconds: number };
+  try { decoded = await decodedAudio(req.body?.audioBase64, req.body?.mimeType); }
+  catch (error) { audioInputFailure(res, error); return; }
+  const reservation = await reserveVoice(userId, decoded.seconds);
+  if (!reservation.reserved) { res.status(429).json({ error: "You've used your 15-minute voice limit for today.", code: "VOICE_LIMIT" }); return; }
+  try {
+    const compatible = await ensureCompatibleFormat(decoded.input);
+    const transcript = (await speechToText(compatible.buffer, compatible.format)).trim();
+    if (!transcript) { res.status(422).json({ error: "No speech was detected. Please try again." }); await releaseVoice(userId, reservation.date, decoded.seconds); return; }
+    await recordEvent(userId, "speech_transcription", transcript, { boxId }, decoded.seconds);
+    res.json({ transcript, secondsUsed: decoded.seconds });
+  } catch (error) {
+    await releaseVoice(userId, reservation.date, decoded.seconds);
+    req.log.error({ error }, "speech transcription failed");
+    res.status(503).json({ error: "Speech recognition is temporarily unavailable." });
+  }
+});
+
 router.post("/pronunciation", async (req, res) => {
   const userId = await requireBoxAccess(req, res, "advanced"); if (!userId) return;
   if (typeof req.body?.text !== "string" || !req.body.text.trim()) { res.status(400).json({ error: "text is required for pronunciation scoring" }); return; }
   let decoded: { input: Buffer; seconds: number };
   try { decoded = await decodedAudio(req.body?.audioBase64, req.body?.mimeType || "audio/webm"); }
-  catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : "Invalid audio payload" }); return; }
+  catch (error) { audioInputFailure(res, error); return; }
   const reservation = await reserveVoice(userId, decoded.seconds);
   if (!reservation.reserved) { res.status(429).json({ error: "You've used your 15-minute Premium voice limit for today.", code: "VOICE_LIMIT" }); return; }
   try {

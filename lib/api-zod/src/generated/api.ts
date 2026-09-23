@@ -139,6 +139,21 @@ export const SendVoiceConversationResponse = zod.object({
 
 
 /**
+ * @summary Transcribe recorded speech for an entitled learning box
+ */
+export const TranscribePracticeSpeechBody = zod.object({
+  "boxId": zod.enum(['start_zero', 'advanced']),
+  "audioBase64": zod.string(),
+  "mimeType": zod.string()
+})
+
+export const TranscribePracticeSpeechResponse = zod.object({
+  "transcript": zod.string(),
+  "secondsUsed": zod.number()
+})
+
+
+/**
  * @summary Return immediate English correction with Roman Hindi or Urdu explanation
  */
 export const CorrectPracticeSentenceBody = zod.object({
@@ -154,10 +169,13 @@ export const CorrectPracticeSentenceResponse = zod.record(zod.string(), zod.unkn
  */
 export const TranslatePracticeTextBody = zod.object({
   "text": zod.string(),
-  "direction": zod.string().optional()
+  "direction": zod.enum(['english-to-roman-hindi', 'roman-hindi-to-english']).optional()
 })
 
-export const TranslatePracticeTextResponse = zod.record(zod.string(), zod.unknown())
+export const TranslatePracticeTextResponse = zod.object({
+  "translation": zod.string(),
+  "notes": zod.string()
+})
 
 
 /**
